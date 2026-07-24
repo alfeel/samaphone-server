@@ -85,14 +85,18 @@ async function runOtp(action, body) {
       const channel = body.channel === "whatsapp" ? "whatsapp" : "sms";
       const { ok, data } = await twilio("Verifications", { To: phone, Channel: channel });
       if (!ok) {
-        // نسجّل سبب Twilio ونمرّر رمزه للتشخيص (رسالة خطأ، لا سرّ).
+        // نسجّل سبب Twilio في سجلّ الخادم فقط (لا نكشفه للعميل).
+        // 60200/21211 = رقم غير صالح، 60203 = تجاوز المحاولات،
+        // ورقم غير موثّق على الحساب التجريبي يفشل هنا أيضًا.
         console.error(`[otp] send_failed twilio=${data && data.code}: ${data && data.message}`);
+        const trialUnverified = data && data.code === 60200;
         return {
           status: 502,
           payload: {
             error: "send_failed",
-            message: "تعذّر إرسال الرمز.",
-            detail: data && (data.message || data.code) ? { code: data.code, message: data.message } : undefined,
+            message: trialUnverified
+              ? "تعذّر إرسال الرمز إلى هذا الرقم."
+              : "تعذّر إرسال الرمز. تأكّد من الرقم وحاول مجددًا.",
           },
         };
       }
