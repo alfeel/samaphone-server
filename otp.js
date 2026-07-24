@@ -83,8 +83,19 @@ async function runOtp(action, body) {
   try {
     if (action === "send") {
       const channel = body.channel === "whatsapp" ? "whatsapp" : "sms";
-      const { ok } = await twilio("Verifications", { To: phone, Channel: channel });
-      if (!ok) return { status: 502, payload: { error: "send_failed", message: "تعذّر إرسال الرمز." } };
+      const { ok, data } = await twilio("Verifications", { To: phone, Channel: channel });
+      if (!ok) {
+        // نسجّل سبب Twilio ونمرّر رمزه للتشخيص (رسالة خطأ، لا سرّ).
+        console.error(`[otp] send_failed twilio=${data && data.code}: ${data && data.message}`);
+        return {
+          status: 502,
+          payload: {
+            error: "send_failed",
+            message: "تعذّر إرسال الرمز.",
+            detail: data && (data.message || data.code) ? { code: data.code, message: data.message } : undefined,
+          },
+        };
+      }
       return { status: 200, payload: { sent: true, channel, to: phone } };
     }
     if (action === "check") {
