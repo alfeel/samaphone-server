@@ -177,6 +177,10 @@ async function runAi(body) {
           responseMimeType: "application/json",
           responseSchema: RESPONSE_SCHEMA,
           temperature: 0.3,
+          // gemini-flash-latest صار نموذج "تفكير": يضيف أجزاء تفكير قبل الإجابة،
+          // فيأتي JSON في جزء غير الأول (أو يُستهلك رصيد الإخراج في التفكير).
+          // إطفاؤه يعيد ردًّا مباشرًا واحدًا ويسرّع الرد ويقلّل الاستهلاك.
+          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
       signal: AbortSignal.timeout(audio || imageCount > 0 ? 60_000 : 30_000),
@@ -192,8 +196,15 @@ async function runAi(body) {
     }
 
     const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return { status: 200, payload: OUT_OF_SCOPE_REPLY };
+    // نجمع نص كل الأجزاء (لا parts[0] فقط): نماذج التفكير قد تضع JSON في جزء
+    // لاحق، وقد يُقسَّم الرد على أكثر من جزء. نتجاهل الأجزاء بلا نص.
+    const allParts = data?.candidates?.[0]?.content?.parts || [];
+    const text = allParts.map((p) => (p && p.text) || "").join("").trim();
+    if (!text) {
+      const reason = data?.candidates?.[0]?.finishReason || "no_text";
+      console.error(`[ai] no text (finishReason=${reason})`);
+      return { status: 200, payload: OUT_OF_SCOPE_REPLY };
+    }
 
     const parsed = JSON.parse(text);
     return { status: 200, payload: parsed.inScope === true ? parsed : OUT_OF_SCOPE_REPLY };
