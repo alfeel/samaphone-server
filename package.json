@@ -1,0 +1,13 @@
+{
+  "name": "samaphone-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "وسيط سما فون: مشكلتي (Gemini) + OTP (Twilio)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
