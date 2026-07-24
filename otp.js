@@ -72,47 +72,51 @@ async function twilio(path, params) {
   return { ok: res.ok, status: res.status, data };
 }
 
-/** يعالج POST /api/otp/send و /api/otp/check. */
+/**
+ * المنطق الخالص: action = "send" | "check". يعيد { status, payload }.
+ * يُستعمل من خادم http ومن دوال Vercel.
+ */
+async function runOtp(action, body) {
+  const phone = toE164(body && body.phone);
+  if (!phone) return { status: 400, payload: { error: "no_phone", message: "رقم الجوال مطلوب." } };
+
+  try {
+    if (action === "send") {
+      const channel = body.channel === "whatsapp" ? "whatsapp" : "sms";
+      const { ok } = await twilio("Verifications", { To: phone, Channel: channel });
+      if (!ok) return { status: 502, payload: { error: "send_failed", message: "تعذّر إرسال الرمز." } };
+      return { status: 200, payload: { sent: true, channel, to: phone } };
+    }
+    if (action === "check") {
+      const code = String((body && body.code) || "").trim();
+      if (!code) return { status: 400, payload: { error: "no_code", message: "أدخل الرمز." } };
+      const { ok, data } = await twilio("VerificationCheck", { To: phone, Code: code });
+      return { status: 200, payload: { approved: ok && data.status === "approved" } };
+    }
+    return { status: 404, payload: { error: "not_found" } };
+  } catch (e) {
+    if (e.notConfigured) {
+      return {
+        status: 503,
+        payload: { error: "not_configured", message: "خدمة التحقق غير مفعّلة. لم تُضبط مفاتيح Twilio على الخادم." },
+      };
+    }
+    return { status: 500, payload: { error: "internal", message: "حدث خطأ. حاول مجددًا." } };
+  }
+}
+
+/** غلاف خادم http: يقرأ الجسم ويحدّد action من المسار. */
 async function handleOtpRequest(req, res, pathname) {
   if (req.method !== "POST") return send(res, 405, { error: "method_not_allowed" });
-
   let body;
   try {
     body = JSON.parse(await readBody(req));
   } catch {
     return send(res, 400, { error: "bad_request", message: "طلب غير صالح." });
   }
-
-  const phone = toE164(body.phone);
-  if (!phone) return send(res, 400, { error: "no_phone", message: "رقم الجوال مطلوب." });
-
-  try {
-    if (pathname === "/api/otp/send") {
-      // القناة: sms افتراضيًا، أو whatsapp إن طُلبت وكانت مفعّلة في Twilio.
-      const channel = body.channel === "whatsapp" ? "whatsapp" : "sms";
-      const { ok, data } = await twilio("Verifications", { To: phone, Channel: channel });
-      if (!ok) return send(res, 502, { error: "send_failed", message: "تعذّر إرسال الرمز." });
-      return send(res, 200, { sent: true, channel, to: phone });
-    }
-
-    if (pathname === "/api/otp/check") {
-      const code = String(body.code || "").trim();
-      if (!code) return send(res, 400, { error: "no_code", message: "أدخل الرمز." });
-      const { ok, data } = await twilio("VerificationCheck", { To: phone, Code: code });
-      const approved = ok && data.status === "approved";
-      return send(res, 200, { approved });
-    }
-
-    return send(res, 404, { error: "not_found" });
-  } catch (e) {
-    if (e.notConfigured) {
-      return send(res, 503, {
-        error: "not_configured",
-        message: "خدمة التحقق غير مفعّلة. لم تُضبط مفاتيح Twilio على الخادم.",
-      });
-    }
-    return send(res, 500, { error: "internal", message: "حدث خطأ. حاول مجددًا." });
-  }
+  const action = pathname === "/api/otp/send" ? "send" : pathname === "/api/otp/check" ? "check" : "";
+  const { status, payload } = await runOtp(action, body);
+  send(res, status, payload);
 }
 
-module.exports = { handleOtpRequest };
+module.exports = { handleOtpRequest, runOtp };

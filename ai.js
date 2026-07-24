@@ -110,36 +110,22 @@ function send(res, status, payload) {
 }
 
 /**
- * يعالج POST /api/ai. يعيد true إن تولّى الطلب، و false ليكمل الخادم مساره.
+ * المنطق الخالص: يأخذ جسم الطلب المُحلَّل ويعيد { status, payload }.
+ * يُستعمل من خادم http (handleAiRequest) ومن دالة Vercel (api/ai.js).
  */
-async function handleAiRequest(req, res) {
-  if (req.method !== "POST") {
-    send(res, 405, { error: "method_not_allowed" });
-    return true;
-  }
-
+async function runAi(body) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    // خطأ إعداد لا خطأ مستخدم — نوضّحه بدل رسالة عامة.
-    send(res, 503, {
-      error: "not_configured",
-      message: "خدمة مشكلتي غير مفعّلة حاليًا. لم يُضبط مفتاح Gemini على الخادم.",
-    });
-    return true;
+    return {
+      status: 503,
+      payload: {
+        error: "not_configured",
+        message: "خدمة مشكلتي غير مفعّلة حاليًا. لم يُضبط مفتاح Gemini على الخادم.",
+      },
+    };
   }
 
-  let body;
-  try {
-    body = JSON.parse(await readBody(req));
-  } catch (e) {
-    send(res, 400, {
-      error: "bad_request",
-      message: e.message === "too_large" ? "التسجيل أو النص كبير جدًا." : "طلب غير صالح.",
-    });
-    return true;
-  }
-
-  const problem = String(body.problem || "").trim();
+  const problem = String((body && body.problem) || "").trim();
   const audio = body.audio; // { data: base64, mimeType } أو غير موجود
   // حتى 4 صور — نقصّ الزائد على الخادم لا نثق بحدّ العميل وحده.
   const images = Array.isArray(body.images) ? body.images.slice(0, 4) : [];
@@ -174,11 +160,10 @@ async function handleAiRequest(req, res) {
   }
 
   if (parts.length === 0) {
-    send(res, 400, {
-      error: "too_short",
-      message: "اكتب مشكلتك أو سجّلها صوتيًا لأتمكن من مساعدتك.",
-    });
-    return true;
+    return {
+      status: 400,
+      payload: { error: "too_short", message: "اكتب مشكلتك أو سجّلها صوتيًا لأتمكن من مساعدتك." },
+    };
   }
 
   try {
@@ -194,50 +179,50 @@ async function handleAiRequest(req, res) {
           temperature: 0.3,
         },
       }),
-      // مهلة أطول مع الوسائط: تحليلها أبطأ من النص.
       signal: AbortSignal.timeout(audio || imageCount > 0 ? 60_000 : 30_000),
     });
 
     if (response.status === 429) {
-      send(res, 429, {
-        error: "quota",
-        message: "تجاوزنا الحصة المجانية لهذا اليوم. جرّب لاحقًا أو تواصل مع الدعم.",
-      });
-      return true;
+      return { status: 429, payload: { error: "quota", message: "تجاوزنا الحصة المجانية لهذا اليوم. جرّب لاحقًا أو تواصل مع الدعم." } };
     }
-
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
       console.error(`[ai] Gemini ${response.status}: ${detail.slice(0, 300)}`);
-      send(res, 502, {
-        error: "upstream",
-        message: "تعذّر الوصول للمساعد الذكي حاليًا. حاول مرة أخرى.",
-      });
-      return true;
+      return { status: 502, payload: { error: "upstream", message: "تعذّر الوصول للمساعد الذكي حاليًا. حاول مرة أخرى." } };
     }
 
     const data = await response.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      // قد يحدث إذا حجب Gemini الرد لأسباب أمان.
-      send(res, 200, OUT_OF_SCOPE_REPLY);
-      return true;
-    }
+    if (!text) return { status: 200, payload: OUT_OF_SCOPE_REPLY };
 
     const parsed = JSON.parse(text);
-    // حارس أخير: لو خرج النموذج عن المجال رغم التعليمات، لا نمرّر رده.
-    send(res, 200, parsed.inScope === true ? parsed : OUT_OF_SCOPE_REPLY);
+    return { status: 200, payload: parsed.inScope === true ? parsed : OUT_OF_SCOPE_REPLY };
   } catch (e) {
     const timedOut = e.name === "TimeoutError" || e.name === "AbortError";
     console.error(`[ai] ${e.name}: ${e.message}`);
-    send(res, timedOut ? 504 : 500, {
-      error: timedOut ? "timeout" : "internal",
-      message: timedOut
-        ? "استغرق الرد وقتًا طويلًا. حاول مرة أخرى."
-        : "حدث خطأ غير متوقع. حاول مرة أخرى.",
-    });
+    return {
+      status: timedOut ? 504 : 500,
+      payload: {
+        error: timedOut ? "timeout" : "internal",
+        message: timedOut ? "استغرق الرد وقتًا طويلًا. حاول مرة أخرى." : "حدث خطأ غير متوقع. حاول مرة أخرى.",
+      },
+    };
   }
+}
+
+/** غلاف خادم http (Render/محلي): يقرأ الجسم ثم يمرّره لـ runAi. */
+async function handleAiRequest(req, res) {
+  if (req.method !== "POST") { send(res, 405, { error: "method_not_allowed" }); return true; }
+  let body;
+  try {
+    body = JSON.parse(await readBody(req));
+  } catch (e) {
+    send(res, 400, { error: "bad_request", message: e.message === "too_large" ? "التسجيل أو النص كبير جدًا." : "طلب غير صالح." });
+    return true;
+  }
+  const { status, payload } = await runAi(body);
+  send(res, status, payload);
   return true;
 }
 
-module.exports = { handleAiRequest };
+module.exports = { handleAiRequest, runAi };
