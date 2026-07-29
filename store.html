@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>سما فون — المتجر</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{ --primary:#1B8EF8; --primaryDark:#0060C0; --bg:#F5F8FF; --card:#FFFFFF; --text:#1A2138; --muted:#8B9BB4; --border:#E2E8F0; --green:#25D366; }
+  *{ box-sizing:border-box; margin:0; padding:0; font-family:'Cairo',sans-serif; }
+  body{ background:var(--bg); color:var(--text); }
+  a{ color:inherit; text-decoration:none; }
+  .wrap{ max-width:1100px; margin:0 auto; padding:16px; }
+  header{ background:linear-gradient(135deg,var(--primary),var(--primaryDark)); color:#fff; padding:18px 16px; position:sticky; top:0; z-index:10; box-shadow:0 2px 12px rgba(0,0,0,.08); }
+  .hrow{ max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .logo{ display:flex; align-items:center; gap:10px; font-weight:700; font-size:22px; }
+  .logo .box{ width:40px; height:40px; border-radius:12px; background:#fff; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .tag{ font-size:12px; opacity:.9; }
+  .btn{ background:var(--primary); color:#fff; border:none; border-radius:12px; padding:12px 16px; font-size:15px; font-weight:700; cursor:pointer; }
+  .btn.green{ background:var(--green); }
+  .btn.ghost{ background:transparent; color:var(--primary); border:1.5px solid var(--primary); }
+  .search{ width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--border); font-size:15px; margin:14px 0; text-align:right; }
+  .cats{ display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; }
+  .cat{ flex:0 0 auto; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px 16px; text-align:center; cursor:pointer; font-weight:600; font-size:14px; white-space:nowrap; }
+  .cat.active{ background:var(--primary); color:#fff; border-color:var(--primary); }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; margin-top:16px; }
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; }
+  .card .img{ height:180px; background:#EEF3FA; display:flex; align-items:center; justify-content:center; color:var(--muted); }
+  .card .img img{ width:100%; height:100%; object-fit:cover; }
+  .card .body{ padding:12px; display:flex; flex-direction:column; gap:6px; flex:1; }
+  .card h3{ font-size:15px; }
+  .price{ color:var(--primary); font-weight:700; font-size:18px; }
+  .desc{ color:var(--muted); font-size:13px; line-height:1.5; }
+  .stock{ font-size:12px; font-weight:600; }
+  .stock.in{ color:#059669; } .stock.out{ color:#EF4444; }
+  .card .wa{ margin-top:auto; }
+  .center{ text-align:center; padding:60px 16px; color:var(--muted); }
+  .login-card{ max-width:420px; margin:8vh auto; background:var(--card); border:1px solid var(--border); border-radius:20px; padding:26px; box-shadow:0 8px 30px rgba(0,0,0,.06); }
+  .login-card h2{ text-align:center; margin-bottom:4px; }
+  .login-card p{ text-align:center; color:var(--muted); font-size:13px; margin-bottom:18px; }
+  .field{ width:100%; padding:13px 14px; border-radius:12px; border:1px solid var(--border); font-size:15px; margin-bottom:12px; text-align:right; }
+  .tabs{ display:flex; background:#EEF3FA; border-radius:12px; padding:4px; margin-bottom:16px; }
+  .tabs button{ flex:1; border:none; background:transparent; padding:10px; border-radius:9px; font-weight:700; cursor:pointer; color:var(--muted); }
+  .tabs button.active{ background:#fff; color:var(--primary); box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .err{ color:#EF4444; font-size:13px; text-align:center; margin-top:8px; min-height:18px; }
+  .hidden{ display:none !important; }
+  footer{ text-align:center; color:var(--muted); font-size:12px; padding:24px; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0E1420; --card:#182234; --text:#E7ECF5; --muted:#93A1BC; --border:#2A3852; }
+  }
+</style>
+</head>
+<body>
+
+<!-- شاشة الدخول -->
+<div id="login" class="wrap">
+  <div class="login-card">
+    <div class="logo" style="justify-content:center; color:var(--primary); margin-bottom:14px;"><span class="box">📱</span> سما فون</div>
+    <h2>الدخول للمتجر</h2>
+    <p>بنفس حسابك في التطبيق</p>
+    <div class="tabs">
+      <button id="tabPhone" class="active" onclick="setMode('phone')">برقم الجوال</button>
+      <button id="tabEmail" onclick="setMode('email')">بالبريد</button>
+    </div>
+    <input id="identifier" class="field" placeholder="7XXXXXXXX" />
+    <input id="password" class="field" type="password" placeholder="كلمة المرور" />
+    <button class="btn" style="width:100%;" onclick="doLogin()">دخول</button>
+    <div id="loginErr" class="err"></div>
+  </div>
+</div>
+
+<!-- المتجر -->
+<div id="store" class="hidden">
+  <header>
+    <div class="hrow">
+      <div class="logo"><span class="box">📱</span> <div><div>سما فون</div><div class="tag">متجرك الأول للجوالات والإلكترونيات</div></div></div>
+      <button class="btn ghost" style="background:#fff;" onclick="logout()">خروج</button>
+    </div>
+  </header>
+  <div class="wrap">
+    <input id="q" class="search" placeholder="ابحث عن منتج..." oninput="render()" />
+    <div id="cats" class="cats"></div>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="center hidden">لا توجد منتجات مطابقة.</div>
+  </div>
+  <footer>© سما فون — نفس منتجات وحسابات التطبيق · <a href="/privacy.html">سياسة الخصوصية</a></footer>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4lo_pPVVA_ixAIybhNKwlLbReKr308eQ",
+    authDomain: "sama-phone.firebaseapp.com",
+    projectId: "sama-phone",
+    storageBucket: "sama-phone.firebasestorage.app",
+    messagingSenderId: "887727148149",
+    appId: "1:887727148149:web:samaphoneweb"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const WHATSAPP = "967783454544";
+  const PHONE_DOMAIN = "phone.samaphone.local";
+  let mode = "phone";
+  let products = [], categories = [], activeCat = null;
+
+  function setMode(m){
+    mode = m;
+    document.getElementById('tabPhone').classList.toggle('active', m==='phone');
+    document.getElementById('tabEmail').classList.toggle('active', m==='email');
+    const idf = document.getElementById('identifier');
+    idf.placeholder = m==='phone' ? "7XXXXXXXX" : "البريد الإلكتروني";
+    idf.type = m==='phone' ? "tel" : "email";
+  }
+
+  function toE164(input){
+    const c = input.replace(/[\s\-()]/g,'');
+    if(c.startsWith('+')) return c;
+    return '+967' + c.replace(/^0+/,'');
+  }
+  function identifierToEmail(id){
+    if(mode==='email') return id.trim();
+    const digits = toE164(id).replace(/^\+/,'');
+    return digits + '@' + PHONE_DOMAIN;
+  }
+
+  async function doLogin(){
+    const err = document.getElementById('loginErr');
+    err.textContent = '';
+    const id = document.getElementById('identifier').value.trim();
+    const pw = document.getElementById('password').value;
+    if(!id || !pw){ err.textContent = 'أدخل البيانات كاملة.'; return; }
+    try{
+      await auth.signInWithEmailAndPassword(identifierToEmail(id), pw);
+    }catch(e){
+      err.textContent = (e.code==='auth/wrong-password'||e.code==='auth/user-not-found'||e.code==='auth/invalid-credential')
+        ? 'بيانات الدخول غير صحيحة.'
+        : (e.code==='auth/unauthorized-domain' ? 'النطاق غير مُصرّح في Firebase — أضِف نطاق الموقع في Authentication ← Settings ← Authorized domains.' : ('تعذّر الدخول: '+(e.message||e.code)));
+    }
+  }
+  function logout(){ auth.signOut(); }
+
+  auth.onAuthStateChanged(async (user)=>{
+    if(user){
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('store').classList.remove('hidden');
+      await loadData();
+    }else{
+      document.getElementById('store').classList.add('hidden');
+      document.getElementById('login').classList.remove('hidden');
+    }
+  });
+
+  async function loadData(){
+    try{
+      const catDoc = await db.collection('settings').doc('categories').get();
+      categories = (catDoc.data()?.items)||[];
+    }catch(e){ categories=[]; }
+    try{
+      const snap = await db.collection('products').where('status','==','approved').get();
+      products = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    }catch(e){ products=[]; }
+    renderCats(); render();
+  }
+
+  function renderCats(){
+    const el = document.getElementById('cats');
+    const all = `<div class="cat ${!activeCat?'active':''}" onclick="pickCat(null)">الكل</div>`;
+    el.innerHTML = all + categories.map(c=>`<div class="cat ${activeCat===c.id?'active':''}" onclick="pickCat('${c.id}')">${c.nameAr||''}</div>`).join('');
+  }
+  function pickCat(id){ activeCat=id; renderCats(); render(); }
+
+  function orderMsg(p){
+    return encodeURIComponent(`مرحباً، أريد الطلب:\n📦 ${p.nameAr}\n💵 السعر: ${(p.price||0).toLocaleString()} ر.ي\n🏪 رمز المورد: ${p.supplierId? String(p.supplierId).slice(-6).toUpperCase():'الإدارة'}\n${p.specs?('📋 '+p.specs):''}`);
+  }
+
+  function render(){
+    const q = document.getElementById('q').value.trim().toLowerCase();
+    let list = products.filter(p=>{
+      if(activeCat && p.categoryId!==activeCat) return false;
+      if(q && !((p.nameAr||'').toLowerCase().includes(q) || (p.descriptionAr||'').toLowerCase().includes(q))) return false;
+      return true;
+    });
+    const grid = document.getElementById('grid');
+    document.getElementById('empty').classList.toggle('hidden', list.length>0);
+    grid.innerHTML = list.map(p=>`
+      <div class="card">
+        <div class="img">${p.imageUri?`<img src="${p.imageUri}" alt="">`:'📷'}</div>
+        <div class="body">
+          <h3>${p.nameAr||''}</h3>
+          <div class="price">${(p.price||0).toLocaleString()} ر.ي</div>
+          <div class="desc">${(p.descriptionAr||'').slice(0,90)}</div>
+          <div class="stock ${p.inStock?'in':'out'}">${p.inStock?'متوفر':'غير متوفر'}</div>
+          <a class="btn green wa" href="https://wa.me/${WHATSAPP}?text=${orderMsg(p)}" target="_blank">طلب عبر واتساب</a>
+        </div>
+      </div>`).join('');
+  }
+</script>
+</body>
+</html>
