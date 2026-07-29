@@ -190,6 +190,11 @@
     <input id="uq" class="search" placeholder="ابحث بالاسم أو الرقم أو الرمز..." oninput="renderUsers()" />
     <div id="admUsers"></div>
   </div>
+  <div id="view-adm-products" class="view wrap hidden">
+    <h2 class="vtitle">🗂️ إدارة المنتجات</h2>
+    <input id="apq" class="search" placeholder="ابحث باسم المنتج..." oninput="renderAdmProducts()" />
+    <div id="admAllProducts"></div>
+  </div>
   <div id="view-adm-orders" class="view wrap hidden">
     <h2 class="vtitle">📋 كل الطلبات</h2>
     <div id="admOrders"></div>
@@ -292,7 +297,7 @@
   let myRole = 'customer', myName = '', myPhone = '', myPerms = {};
   // بيانات الأدوار
   let supProducts = [], supOrders = [], repAvail = [], repMine = [], admPending = [], admUsers = [], admOrders = [];
-  let centers = [], myServices = [], centerServices = [], admServices = [];
+  let centers = [], myServices = [], centerServices = [], admServices = [], admAllProducts = [];
   const SVC_STATUS = {
     pending:{t:'بانتظار الاستلام',c:'#d97706'}, received:{t:'تم الاستلام',c:'#2563eb'},
     quoted:{t:'بانتظار موافقتك',c:'#7c3aed'}, approved:{t:'قيد الإصلاح',c:'#0891b2'},
@@ -307,7 +312,7 @@
     supplier: [['sup-products','🏷️ منتجاتي'],['sup-add','➕ إضافة منتج'],['sup-orders','📦 الطلبات'],['meshkilati','🛠️ مشكلتي']],
     rep:      [['rep-available','🛵 متاح'],['rep-mine','🚚 توصيلاتي']],
     center:   [['center','🔧 طلبات الصيانة']],
-    admin:    [['adm-pending','🕵️ مراجعة'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['adm-services','🔧 الصيانة'],['store','🛍️ المتجر']],
+    admin:    [['adm-pending','🕵️ مراجعة'],['adm-products','🗂️ المنتجات'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['adm-services','🔧 الصيانة']],
   };
   const ROLE_AR = { customer:'عميل', supplier:'مورّد', rep:'مندوب', admin:'إدارة', center:'مركز صيانة' };
 
@@ -459,7 +464,7 @@
     if(myRole==='supplier'){ watchSupProducts(); watchSupOrders(); fillCatSelect(); }
     if(myRole==='rep'){ watchRepAvailable(); watchRepMine(); }
     if(myRole==='center'){ watchCenterServices(); }
-    if(myRole==='admin'){ watchPending(); watchUsers(); watchAllOrders(); watchAdmServices(); }
+    if(myRole==='admin'){ watchPending(); watchAllProducts(); watchUsers(); watchAllOrders(); watchAdmServices(); }
 
     // العرض الافتراضي = أول عنصر في قائمة الدور
     showView((NAV[myRole]||NAV.customer)[0][0]);
@@ -507,6 +512,7 @@
       'sup-products': renderSupProducts, 'sup-orders': renderSupOrders,
       'rep-available': renderRepAvail, 'rep-mine': renderRepMine,
       'adm-pending': renderPending, 'adm-users': renderUsers, 'adm-orders': renderAdmOrders,
+      'adm-products': renderAdmProducts,
       services: renderServices, center: renderCenter, 'adm-services': renderAdmServices,
     };
     if(R[v]) R[v]();
@@ -881,6 +887,36 @@
     const el=document.getElementById('admOrders'); if(!el) return;
     if(!admOrders.length){ el.innerHTML='<div class="center">لا طلبات بعد.</div>'; return; }
     el.innerHTML=admOrders.slice(0,100).map(o=>orderCardHTML(o, true)).join('');
+  }
+
+  // ═══════════════ إدارة المنتجات (حذف — الإدارة فقط) ═══════════════
+  function watchAllProducts(){
+    subs.allP && subs.allP();
+    subs.allP=db.collection('products').onSnapshot(s=>{
+      admAllProducts=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      if(currentView==='adm-products') renderAdmProducts();
+    },()=>{});
+  }
+  function renderAdmProducts(){
+    const el=document.getElementById('admAllProducts'); if(!el) return;
+    const q=(document.getElementById('apq')?.value||'').trim().toLowerCase();
+    let list=admAllProducts;
+    if(q) list=list.filter(p=>(p.nameAr||'').toLowerCase().includes(q));
+    if(!list.length){ el.innerHTML='<div class="center">لا منتجات.</div>'; return; }
+    el.innerHTML=list.map(p=>{
+      const st=PSTAT[p.status]||{t:p.status,c:'#888'};
+      return `<div class="pcard" style="flex-wrap:wrap;">
+        <div class="pimg">${p.imageUri?`<img src="${p.imageUri}" class="pimg">`:'📷'}</div>
+        <div class="pinfo"><b>${p.nameAr||''}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div></div>
+        <span class="pstatus" style="background:${st.c}22;color:${st.c}">${st.t}</span>
+        <div class="row-actions" style="width:100%;"><button class="btn red sm" onclick="admDeleteProduct('${p.id}','${(p.nameAr||'').replace(/'/g,'')}')">🗑️ حذف المنتج</button></div>
+      </div>`;
+    }).join('');
+  }
+  async function admDeleteProduct(id, name){
+    if(!confirm('حذف المنتج «'+(name||'')+'» نهائيًا؟ لا يمكن التراجع.')) return;
+    try{ await db.collection('products').doc(id).delete(); toast('تم حذف المنتج ✅'); }
+    catch(e){ toast('تعذّر الحذف: '+(e.code||e.message||'')); }
   }
 
   // ═══════════════ الخدمات — العميل ═══════════════
