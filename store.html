@@ -85,34 +85,95 @@
       <div class="logo"><span class="box">📱</span> <div><div>سما فون</div><div class="tag">متجرك الأول للجوالات والإلكترونيات</div></div></div>
       <button class="btn ghost" style="background:#fff;" onclick="logout()">خروج</button>
     </div>
-    <nav class="nav">
-      <button id="nav-store" class="navb active" onclick="showView('store')">🛍️ المتجر</button>
-      <button id="nav-orders" class="navb" onclick="showView('orders')">📦 طلباتي <span id="ordersCount" class="ncount hidden">0</span></button>
-      <button id="nav-info" class="navb" onclick="showView('info')">💳 الدفع والشحن</button>
-    </nav>
+    <div id="roleTag" class="roletag hidden"></div>
+    <nav class="nav" id="nav"></nav>
   </header>
 
-  <!-- عرض المتجر -->
-  <div id="view-store" class="wrap">
+  <!-- ═══ العميل ═══ -->
+  <div id="view-store" class="view wrap">
     <input id="q" class="search" placeholder="ابحث عن منتج..." oninput="render()" />
     <div id="cats" class="cats"></div>
     <div id="grid" class="grid"></div>
     <div id="empty" class="center hidden">لا توجد منتجات مطابقة.</div>
   </div>
 
-  <!-- طلباتي -->
-  <div id="view-orders" class="wrap hidden">
+  <div id="view-orders" class="view wrap hidden">
     <h2 class="vtitle">📦 طلباتي</h2>
     <div id="ordersList"></div>
   </div>
 
-  <!-- الدفع والشحن -->
-  <div id="view-info" class="wrap hidden">
+  <div id="view-info" class="view wrap hidden">
     <h2 class="vtitle">🚚 خيارات الشحن</h2>
     <div id="shipInfo" class="ibox"></div>
     <h2 class="vtitle" style="margin-top:22px;">💳 طرق الدفع</h2>
     <p class="ihint">حوّل المبلغ إلى إحدى المحافظ التالية ثم أرسل الإشعار مع طلبك. المس الرقم لنسخه.</p>
     <div id="payInfo" class="ibox"></div>
+  </div>
+
+  <!-- ═══ مشكلتي (مساعد الأعطال) ═══ -->
+  <div id="view-meshkilati" class="view wrap hidden">
+    <h2 class="vtitle">🛠️ مشكلتي — مساعد أعطال الأجهزة</h2>
+    <p class="ihint">صِف عطل جهازك (جوال / كمبيوتر) نصًّا وأرفق صورًا إن أردت، وسيقترح المساعد الحل أو يوجّهك لمركز صيانة.</p>
+    <div class="ibox">
+      <textarea id="mkText" class="field" rows="4" placeholder="مثال: شاشة الجوال تومض ولا تستجيب للمس بعد سقوطه..."></textarea>
+      <div id="mkThumbs" class="thumbs"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <label class="btn ghost" style="cursor:pointer;">📷 أضف صورة<input id="mkImg" type="file" accept="image/*" multiple hidden onchange="mkAddImages(event)"></label>
+        <button class="btn" style="flex:1;" onclick="mkAsk()" id="mkBtn">اسأل المساعد</button>
+      </div>
+      <div id="mkAnswer" class="mkanswer hidden"></div>
+    </div>
+  </div>
+
+  <!-- ═══ المورّد ═══ -->
+  <div id="view-sup-products" class="view wrap hidden">
+    <h2 class="vtitle">🏷️ منتجاتي</h2>
+    <div id="supProducts"></div>
+  </div>
+  <div id="view-sup-add" class="view wrap hidden">
+    <h2 class="vtitle">➕ إضافة منتج</h2>
+    <div class="ibox">
+      <input id="pName" class="field" placeholder="اسم المنتج *" />
+      <input id="pPrice" class="field" type="number" inputmode="numeric" placeholder="السعر (ر.ي) *" />
+      <select id="pCat" class="field"></select>
+      <textarea id="pDesc" class="field" rows="3" placeholder="الوصف"></textarea>
+      <textarea id="pSpecs" class="field" rows="2" placeholder="المواصفات (اختياري)"></textarea>
+      <div id="pThumbs" class="thumbs"></div>
+      <label class="btn ghost" style="cursor:pointer;display:inline-block;">📷 صورة المنتج<input id="pImg" type="file" accept="image/*" hidden onchange="pAddImage(event)"></label>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:6px;"><input id="pStock" type="checkbox" checked> متوفر في المخزون</label>
+      <button class="btn" onclick="supSubmit()" id="pBtn">إرسال للمراجعة</button>
+      <p class="ihint" style="margin:4px 0 0;">يُرسل المنتج للإدارة للمراجعة، ويظهر في المتجر بعد الموافقة.</p>
+    </div>
+  </div>
+  <div id="view-sup-orders" class="view wrap hidden">
+    <h2 class="vtitle">📦 طلبات منتجاتي</h2>
+    <div id="supOrders"></div>
+  </div>
+
+  <!-- ═══ المندوب ═══ -->
+  <div id="view-rep-available" class="view wrap hidden">
+    <h2 class="vtitle">🛵 متاح للاستلام</h2>
+    <p class="ihint">طلبات جاهزة بلا مندوب — استلمها ثم أدخل كود الاستلام من المورد.</p>
+    <div id="repAvail"></div>
+  </div>
+  <div id="view-rep-mine" class="view wrap hidden">
+    <h2 class="vtitle">🚚 توصيلاتي</h2>
+    <div id="repMine"></div>
+  </div>
+
+  <!-- ═══ الإدارة ═══ -->
+  <div id="view-adm-pending" class="view wrap hidden">
+    <h2 class="vtitle">🕵️ منتجات بانتظار المراجعة</h2>
+    <div id="admPending"></div>
+  </div>
+  <div id="view-adm-users" class="view wrap hidden">
+    <h2 class="vtitle">👥 إدارة المستخدمين</h2>
+    <input id="uq" class="search" placeholder="ابحث بالاسم أو الرقم أو الرمز..." oninput="renderUsers()" />
+    <div id="admUsers"></div>
+  </div>
+  <div id="view-adm-orders" class="view wrap hidden">
+    <h2 class="vtitle">📋 كل الطلبات</h2>
+    <div id="admOrders"></div>
   </div>
 
   <footer>© سما فون — نفس منتجات وحسابات التطبيق · <a href="/privacy.html">سياسة الخصوصية</a></footer>
@@ -154,6 +215,30 @@
   .totrow.big{font-size:18px;font-weight:800;color:var(--text);}
   .sheet-actions{display:flex;gap:10px;margin-top:18px;}
   .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:11px 20px;border-radius:12px;font-weight:700;font-size:14px;z-index:60;}
+  .roletag{max-width:1100px;margin:8px auto 0;padding:0 16px;color:#fff;font-size:13px;font-weight:700;opacity:.95;}
+  textarea.field{resize:vertical;font-family:inherit;}
+  select.field{background:var(--card);}
+  .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0;}
+  .thumbs .th{position:relative;width:72px;height:72px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+  .thumbs .th img{width:100%;height:100%;object-fit:cover;}
+  .thumbs .th .x{position:absolute;top:2px;left:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:8px;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;}
+  .mkanswer{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px;white-space:pre-wrap;line-height:1.8;font-size:14px;color:var(--text);}
+  .mkanswer .badge{display:inline-block;border-radius:9px;padding:3px 10px;font-size:12px;font-weight:700;margin-bottom:10px;}
+  .pcard{max-width:1100px;margin:0 auto 12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:center;}
+  .pcard .pimg{width:60px;height:60px;border-radius:10px;background:#EEF3FA;object-fit:cover;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:var(--muted);}
+  .pcard .pinfo{flex:1;min-width:0;}
+  .pcard .pinfo b{font-size:15px;color:var(--text);}
+  .pcard .pinfo .pm{color:var(--muted);font-size:13px;margin-top:2px;}
+  .pstatus{font-size:12px;font-weight:700;border-radius:8px;padding:3px 10px;white-space:nowrap;}
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .btn.sm{padding:8px 13px;font-size:13px;border-radius:10px;}
+  .btn.red{background:#dc2626;}
+  .btn.amber{background:#d97706;}
+  .ucard{max-width:1100px;margin:0 auto 10px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 16px;}
+  .ucard .urow{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .ucard b{font-size:15px;color:var(--text);}
+  .ucode{color:var(--primary);font-weight:700;cursor:pointer;font-size:13px;}
+  .rolepill{font-size:12px;font-weight:700;border-radius:8px;padding:2px 9px;background:rgba(37,99,235,.12);color:var(--primary);}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -178,6 +263,20 @@
   let products = [], categories = [], activeCat = null;
   let shipping = [], payments = [], myOrders = [], ordersUnsub = null;
   let currentView = 'store', selShip = null, selPay = null, detailP = null;
+  let myRole = 'customer', myName = '', myPhone = '', myPerms = {};
+  // بيانات الأدوار
+  let supProducts = [], supOrders = [], repAvail = [], repMine = [], admPending = [], admUsers = [], admOrders = [];
+  const subs = {};   // إلغاء الاشتراكات اللحظية عند الخروج
+  let mkImages = [], pImage = null;
+
+  // القوائم حسب الدور — كل عنصر [مفتاح العرض, التسمية]
+  const NAV = {
+    customer: [['store','🛍️ المتجر'],['orders','📦 طلباتي'],['meshkilati','🛠️ مشكلتي'],['info','💳 الدفع والشحن']],
+    supplier: [['sup-products','🏷️ منتجاتي'],['sup-add','➕ إضافة منتج'],['sup-orders','📦 الطلبات'],['meshkilati','🛠️ مشكلتي']],
+    rep:      [['rep-available','🛵 متاح'],['rep-mine','🚚 توصيلاتي']],
+    admin:    [['adm-pending','🕵️ مراجعة'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['store','🛍️ المتجر']],
+  };
+  const ROLE_AR = { customer:'عميل', supplier:'مورّد', rep:'مندوب', admin:'إدارة', center:'مركز صيانة' };
 
   const ORDER_STATUS = {
     pending:   { t:'قيد المراجعة', c:'#d97706' },
@@ -273,7 +372,12 @@
         : (e.code==='auth/operation-not-allowed' ? 'فعّل مزوّد Google في Firebase ← Authentication ← Sign-in method.' : ('تعذّر الدخول بـGoogle: '+(e.message||e.code)));
     }
   }
-  function logout(){ if(ordersUnsub){ ordersUnsub(); ordersUnsub=null; } auth.signOut(); }
+  function logout(){
+    if(ordersUnsub){ ordersUnsub(); ordersUnsub=null; }
+    Object.keys(subs).forEach(k=>{ try{ subs[k] && subs[k](); }catch(e){} delete subs[k]; });
+    myRole='customer'; supProducts=[]; supOrders=[]; repAvail=[]; repMine=[]; admPending=[]; admUsers=[]; admOrders=[];
+    auth.signOut();
+  }
 
   auth.onAuthStateChanged(async (user)=>{
     if(user){
@@ -303,8 +407,39 @@
       const p = await db.collection('settings').doc('payments').get();
       payments = ((p.data()?.items)||[]).filter(x=>x.enabled!==false);
     }catch(e){ payments=[]; }
-    watchMyOrders();
+
+    // نقرأ دور المستخدم لبناء لوحته
+    try{
+      const u = await db.collection('users').doc(auth.currentUser.uid).get();
+      const d = u.data()||{};
+      myRole = d.role || 'customer';
+      myName = d.name || ''; myPhone = d.phone || '';
+      myPerms = d.permissions || {};
+    }catch(e){ myRole='customer'; }
+
+    buildNav();
     renderCats(); render();
+
+    // اشتراكات حسب الدور
+    if(myRole==='customer' || myRole==='admin') watchMyOrders();
+    if(myRole==='supplier'){ watchSupProducts(); watchSupOrders(); fillCatSelect(); }
+    if(myRole==='rep'){ watchRepAvailable(); watchRepMine(); }
+    if(myRole==='admin'){ watchPending(); watchUsers(); watchAllOrders(); }
+
+    // العرض الافتراضي = أول عنصر في قائمة الدور
+    showView((NAV[myRole]||NAV.customer)[0][0]);
+  }
+
+  function buildNav(){
+    const items = NAV[myRole] || NAV.customer;
+    document.getElementById('nav').innerHTML = items.map(([k,l])=>{
+      const badge = k==='orders' ? ' <span id="ordersCount" class="ncount hidden">0</span>'
+                  : k==='adm-pending' ? ' <span id="pendCount" class="ncount hidden">0</span>' : '';
+      return `<button id="nav-${k}" class="navb" onclick="showView('${k}')">${l}${badge}</button>`;
+    }).join('');
+    const rt = document.getElementById('roleTag');
+    if(myRole && myRole!=='customer'){ rt.textContent = `🔑 لوحة ${ROLE_AR[myRole]||myRole}${myName?' — '+myName:''}`; rt.classList.remove('hidden'); }
+    else rt.classList.add('hidden');
   }
 
   // نتابع طلبات العميل لحظيًا (ترتيب محليًا — بلا فهرس مركّب).
@@ -317,7 +452,7 @@
         myOrders = snap.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
         const active = myOrders.filter(o=>o.status!=='delivered' && o.status!=='cancelled').length;
         const badge = document.getElementById('ordersCount');
-        badge.textContent = active; badge.classList.toggle('hidden', active===0);
+        if(badge){ badge.textContent = active; badge.classList.toggle('hidden', active===0); }
         if(currentView==='orders') renderOrders();
       },
       ()=>{ myOrders=[]; }
@@ -327,12 +462,18 @@
   // ── التنقّل بين الأقسام ──────────────────────────────────
   function showView(v){
     currentView = v;
-    ['store','orders','info'].forEach(x=>{
-      document.getElementById('view-'+x).classList.toggle('hidden', x!==v);
-      document.getElementById('nav-'+x).classList.toggle('active', x===v);
-    });
-    if(v==='orders') renderOrders();
-    if(v==='info') renderInfo();
+    document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));
+    const target = document.getElementById('view-'+v);
+    if(target) target.classList.remove('hidden');
+    document.querySelectorAll('.navb').forEach(b=>b.classList.remove('active'));
+    const nb = document.getElementById('nav-'+v); if(nb) nb.classList.add('active');
+    const R = {
+      orders: renderOrders, info: renderInfo,
+      'sup-products': renderSupProducts, 'sup-orders': renderSupOrders,
+      'rep-available': renderRepAvail, 'rep-mine': renderRepMine,
+      'adm-pending': renderPending, 'adm-users': renderUsers, 'adm-orders': renderAdmOrders,
+    };
+    if(R[v]) R[v]();
   }
 
   function fmtDate(ts){
@@ -454,6 +595,226 @@
 
   function orderMsg(p){
     return encodeURIComponent(`مرحباً، أريد الطلب:\n📦 ${p.nameAr}\n💵 السعر: ${(p.price||0).toLocaleString()} ر.ي\n🏪 رمز المورد: ${p.supplierId? String(p.supplierId).slice(-6).toUpperCase():'الإدارة'}\n${p.specs?('📋 '+p.specs):''}`);
+  }
+
+  // ═══════════════ مشكلتي (Gemini عبر /api/ai) ═══════════════
+  function fileToB64(file){
+    return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+  }
+  async function mkAddImages(ev){
+    const files=[...ev.target.files].slice(0,4-mkImages.length);
+    for(const f of files){ const data=await fileToB64(f); mkImages.push({data, mimeType:f.type||'image/jpeg'}); }
+    ev.target.value=''; renderMkThumbs();
+  }
+  function renderMkThumbs(){
+    document.getElementById('mkThumbs').innerHTML = mkImages.map((im,i)=>`<div class="th"><img src="data:${im.mimeType};base64,${im.data}"><button class="x" onclick="mkImages.splice(${i},1);renderMkThumbs()">✕</button></div>`).join('');
+  }
+  async function mkAsk(){
+    const t=document.getElementById('mkText').value.trim();
+    if(!t && !mkImages.length){ toast('اكتب وصف المشكلة أو أضف صورة'); return; }
+    const btn=document.getElementById('mkBtn'), ans=document.getElementById('mkAnswer');
+    btn.disabled=true; btn.textContent='جارٍ التحليل…';
+    ans.classList.remove('hidden'); ans.innerHTML='⏳ يحلّل المساعد مشكلتك...';
+    try{
+      const r=await fetch('/api/ai',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({problem:t, images:mkImages})});
+      const d=await r.json();
+      if(!r.ok){ ans.innerHTML=`<span style="color:#dc2626">${d.message||'تعذّر الحصول على رد. حاول مجددًا.'}</span>`; return; }
+      const cat={phone_hardware:'عطل جوال (هاردوير)',phone_software:'برمجيات الجوال',computer:'كمبيوتر',out_of_scope:'خارج النطاق'}[d.category]||'';
+      const bcol=d.inScope?'#059669':'#d97706';
+      const centerBtn=d.needsCenter?`<div style="margin-top:14px;"><a class="btn green" href="https://wa.me/${WHATSAPP}?text=${encodeURIComponent('مرحباً، أحتاج صيانة جهاز.\n'+t)}" target="_blank">📲 تواصل مع مركز صيانة</a></div>`:'';
+      ans.innerHTML=`<span class="badge" style="background:${bcol}22;color:${bcol}">${cat}</span>\n${d.answer||''}${centerBtn}`;
+    }catch(e){ ans.innerHTML='<span style="color:#dc2626">تعذّر الاتصال بالخادم. تحقّق من الإنترنت.</span>'; }
+    finally{ btn.disabled=false; btn.textContent='اسأل المساعد'; }
+  }
+
+  // ═══════════════ المورّد ═══════════════
+  function fillCatSelect(){
+    const s=document.getElementById('pCat'); if(!s) return;
+    s.innerHTML='<option value="">— اختر القسم —</option>'+categories.map(c=>`<option value="${c.id}">${c.nameAr||''}</option>`).join('');
+  }
+  async function pAddImage(ev){ const f=ev.target.files[0]; if(!f) return; pImage=await fileToB64(f); ev.target.value=''; document.getElementById('pThumbs').innerHTML=`<div class="th"><img src="data:image/jpeg;base64,${pImage}"><button class="x" onclick="pImage=null;document.getElementById('pThumbs').innerHTML=''">✕</button></div>`; }
+  function watchSupProducts(){
+    const uid=auth.currentUser.uid;
+    subs.supP && subs.supP();
+    subs.supP=db.collection('products').where('supplierId','==',uid).onSnapshot(s=>{
+      supProducts=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      if(currentView==='sup-products') renderSupProducts();
+    },()=>{});
+  }
+  const PSTAT={approved:{t:'معتمد',c:'#059669'},pending:{t:'قيد المراجعة',c:'#d97706'},rejected:{t:'مرفوض',c:'#dc2626'}};
+  function renderSupProducts(){
+    const el=document.getElementById('supProducts'); if(!el) return;
+    if(!supProducts.length){ el.innerHTML='<div class="center">لا منتجات بعد. أضف أول منتج ➕</div>'; return; }
+    el.innerHTML=supProducts.map(p=>{
+      const st=PSTAT[p.status]||{t:p.status,c:'#888'};
+      return `<div class="pcard">
+        <div class="pimg">${p.imageUri?`<img src="${p.imageUri}" class="pimg">`:'📷'}</div>
+        <div class="pinfo"><b>${p.nameAr||''}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي</div>
+        ${p.status==='rejected'&&p.rejectionReason?`<div class="pm" style="color:#dc2626">سبب: ${p.rejectionReason}</div>`:''}</div>
+        <span class="pstatus" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>`;
+    }).join('');
+  }
+  async function supSubmit(){
+    const name=document.getElementById('pName').value.trim();
+    const price=parseFloat(document.getElementById('pPrice').value);
+    if(!name){ toast('اسم المنتج مطلوب'); return; }
+    if(!(price>0)){ toast('أدخل سعرًا صحيحًا'); return; }
+    const btn=document.getElementById('pBtn'); btn.disabled=true; btn.textContent='جارٍ الإرسال…';
+    try{
+      await db.collection('products').add({
+        nameAr:name, price, categoryId:document.getElementById('pCat').value||null,
+        descriptionAr:document.getElementById('pDesc').value.trim(), specs:document.getElementById('pSpecs').value.trim(),
+        inStock:document.getElementById('pStock').checked, imageUri:pImage?('data:image/jpeg;base64,'+pImage):'',
+        supplierId:auth.currentUser.uid, status:'pending', createdAt:Date.now(),
+      });
+      toast('أُرسل المنتج للمراجعة ✅');
+      ['pName','pPrice','pDesc','pSpecs'].forEach(id=>document.getElementById(id).value='');
+      pImage=null; document.getElementById('pThumbs').innerHTML='';
+      showView('sup-products');
+    }catch(e){ toast('تعذّر الإرسال: '+(e.message||e.code)); }
+    finally{ btn.disabled=false; btn.textContent='إرسال للمراجعة'; }
+  }
+  function watchSupOrders(){
+    const uid=auth.currentUser.uid;
+    subs.supO && subs.supO();
+    subs.supO=db.collection('orders').where('supplierId','==',uid).onSnapshot(s=>{
+      supOrders=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      if(currentView==='sup-orders') renderSupOrders();
+    },()=>{});
+  }
+  function renderSupOrders(){
+    const el=document.getElementById('supOrders'); if(!el) return;
+    if(!supOrders.length){ el.innerHTML='<div class="center">لا طلبات على منتجاتك بعد.</div>'; return; }
+    el.innerHTML=supOrders.map(o=>orderCardHTML(o, true)).join('');
+  }
+  function orderCardHTML(o, showPhone){
+    const st=ORDER_STATUS[o.status]||{t:o.status,c:'#888'};
+    return `<div class="ocard">
+      <div class="orow"><b>${o.productName||'منتج'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+      <div class="ometa">💵 ${(o.price||0).toLocaleString()} ر.ي${o.orderNo?` · #${o.orderNo}`:''}</div>
+      ${showPhone&&o.phone?`<div class="ometa">📞 ${o.phone}</div>`:''}
+      ${o.repName?`<div class="ometa">🛵 المندوب: ${o.repName}</div>`:''}
+      <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div></div>`;
+  }
+
+  // ═══════════════ المندوب ═══════════════
+  function watchRepAvailable(){
+    subs.repA && subs.repA();
+    subs.repA=db.collection('orders').where('status','==','ready').onSnapshot(s=>{
+      repAvail=s.docs.map(d=>({id:d.id,...d.data()})).filter(o=>!o.repId).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+      if(currentView==='rep-available') renderRepAvail();
+    },()=>{});
+  }
+  function renderRepAvail(){
+    const el=document.getElementById('repAvail'); if(!el) return;
+    if(!repAvail.length){ el.innerHTML='<div class="center">لا طلبات متاحة حاليًا.</div>'; return; }
+    el.innerHTML=repAvail.map(o=>`<div class="ocard">
+      <div class="orow"><b>${o.productName||'منتج'}</b><span class="obadge" style="background:#7c3aed22;color:#7c3aed">جاهز</span></div>
+      <div class="ometa">💵 ${(o.price||0).toLocaleString()} ر.ي${o.shippingLabel?` · 🚚 ${o.shippingLabel}`:''}</div>
+      ${o.shippingAddress?`<div class="ometa">📍 ${o.shippingAddress.governorate||''} ${o.shippingAddress.district||''} ${o.shippingAddress.area||''}</div>`:''}
+      <div class="row-actions"><button class="btn green sm" onclick="repTake('${o.id}')">استلام الطلب</button></div></div>`).join('');
+  }
+  async function repTake(id){
+    try{
+      await db.collection('orders').doc(id).update({ repId:auth.currentUser.uid, repName:(myName||'مندوب'), status:'assigned', updatedAt:Date.now() });
+      toast('تم استلام الطلب ✅'); showView('rep-mine');
+    }catch(e){ toast('سبقك مندوب آخر أو تعذّر الاستلام'); }
+  }
+  function watchRepMine(){
+    const uid=auth.currentUser.uid;
+    subs.repM && subs.repM();
+    subs.repM=db.collection('orders').where('repId','==',uid).onSnapshot(s=>{
+      repMine=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+      if(currentView==='rep-mine') renderRepMine();
+    },()=>{});
+  }
+  function renderRepMine(){
+    const el=document.getElementById('repMine'); if(!el) return;
+    const active=repMine.filter(o=>o.status!=='delivered'&&o.status!=='cancelled');
+    if(!active.length){ el.innerHTML='<div class="center">لا توصيلات نشطة.</div>'; return; }
+    el.innerHTML=active.map(o=>{
+      const st=ORDER_STATUS[o.status]||{t:o.status,c:'#888'};
+      let action='';
+      if(o.status==='assigned') action=`<button class="btn amber sm" onclick="repAdvance('${o.id}','picked_up','كود الاستلام من المورد')">📥 استلمت من المورد</button>`;
+      else if(o.status==='picked_up') action=`<button class="btn green sm" onclick="repAdvance('${o.id}','delivered','كود التسليم من العميل')">✅ سلّمت للعميل</button>`;
+      return `<div class="ocard">
+        <div class="orow"><b>${o.productName||'منتج'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="ometa">💵 ${(o.price||0).toLocaleString()} ر.ي${o.phone?` · 📞 ${o.phone}`:''}</div>
+        ${o.shippingAddress?`<div class="ometa">📍 ${o.shippingAddress.governorate||''} ${o.shippingAddress.district||''} ${o.shippingAddress.area||''}</div>`:''}
+        <div class="row-actions">${action}</div></div>`;
+    }).join('');
+  }
+  async function repAdvance(id, next, prompt_){
+    const code=prompt(prompt_); if(code===null) return;
+    if(!code.trim()){ toast('الكود مطلوب'); return; }
+    try{
+      const now=Date.now();
+      const patch = next==='picked_up' ? {status:next,updatedAt:now,pickedUpAt:now,handoffCode:code.trim()} : {status:next,updatedAt:now,deliveredAt:now,handoffCode:code.trim()};
+      await db.collection('orders').doc(id).update(patch);
+      toast(next==='delivered'?'تم التسليم ✅':'تم الاستلام ✅');
+    }catch(e){ toast('الكود غير صحيح أو تعذّرت العملية'); }
+  }
+
+  // ═══════════════ الإدارة ═══════════════
+  function watchPending(){
+    subs.pend && subs.pend();
+    subs.pend=db.collection('products').where('status','==','pending').onSnapshot(s=>{
+      admPending=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+      const b=document.getElementById('pendCount'); if(b){ b.textContent=admPending.length; b.classList.toggle('hidden', !admPending.length); }
+      if(currentView==='adm-pending') renderPending();
+    },()=>{});
+  }
+  function renderPending(){
+    const el=document.getElementById('admPending'); if(!el) return;
+    if(!admPending.length){ el.innerHTML='<div class="center">لا منتجات بانتظار المراجعة ✅</div>'; return; }
+    el.innerHTML=admPending.map(p=>`<div class="pcard" style="flex-wrap:wrap;">
+      <div class="pimg">${p.imageUri?`<img src="${p.imageUri}" class="pimg">`:'📷'}</div>
+      <div class="pinfo"><b>${p.nameAr||''}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div>
+      ${p.descriptionAr?`<div class="pm">${p.descriptionAr}</div>`:''}</div>
+      <div class="row-actions" style="width:100%;"><button class="btn green sm" onclick="admApprove('${p.id}')">✅ موافقة</button>
+      <button class="btn red sm" onclick="admReject('${p.id}')">✕ رفض</button></div></div>`).join('');
+  }
+  async function admApprove(id){
+    try{ await db.collection('products').doc(id).update({status:'approved', rejectionReason:null}); toast('تمت الموافقة ✅'); }
+    catch(e){ toast('تعذّرت الموافقة: '+(e.code||e.message)); }
+  }
+  async function admReject(id){
+    const reason=prompt('سبب الرفض (ليصحّحه المورد):'); if(reason===null) return;
+    if(!reason.trim()){ toast('اذكر سبب الرفض'); return; }
+    try{ await db.collection('products').doc(id).update({status:'rejected', rejectionReason:reason.trim()}); toast('تم الرفض'); }
+    catch(e){ toast('تعذّر الرفض'); }
+  }
+  function watchUsers(){
+    subs.usr && subs.usr();
+    subs.usr=db.collection('users').onSnapshot(s=>{
+      admUsers=s.docs.map(d=>({id:d.id,...d.data()}));
+      if(currentView==='adm-users') renderUsers();
+    },()=>{});
+  }
+  function renderUsers(){
+    const el=document.getElementById('admUsers'); if(!el) return;
+    const q=(document.getElementById('uq')?.value||'').trim().toLowerCase();
+    let list=admUsers;
+    if(q) list=list.filter(u=>(u.name||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||(u.id||'').toLowerCase().includes(q));
+    if(!list.length){ el.innerHTML='<div class="center">لا مستخدمين مطابقين.</div>'; return; }
+    el.innerHTML=list.map(u=>`<div class="ucard"><div class="urow">
+      <div><b>${u.name||'—'}</b> <span class="rolepill">${ROLE_AR[u.role]||u.role||'عميل'}</span>
+      <div class="pm" style="color:var(--muted);font-size:13px;margin-top:3px;">${u.phone?'📞 '+u.phone:''}${u.email?' · '+u.email:''}</div>
+      <div class="ucode" onclick="copyTxt('${String(u.id).slice(-6).toUpperCase()}')">🔑 الرمز: ${String(u.id).slice(-6).toUpperCase()}</div></div>
+      <span class="pstatus" style="background:${u.active!==false?'#05966922':'#dc262622'};color:${u.active!==false?'#059669':'#dc2626'}">${u.active!==false?'نشط':'موقوف'}</span>
+    </div></div>`).join('');
+  }
+  function watchAllOrders(){
+    subs.allO && subs.allO();
+    subs.allO=db.collection('orders').onSnapshot(s=>{
+      admOrders=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      if(currentView==='adm-orders') renderAdmOrders();
+    },()=>{});
+  }
+  function renderAdmOrders(){
+    const el=document.getElementById('admOrders'); if(!el) return;
+    if(!admOrders.length){ el.innerHTML='<div class="center">لا طلبات بعد.</div>'; return; }
+    el.innerHTML=admOrders.slice(0,100).map(o=>orderCardHTML(o, true)).join('');
   }
 
   function render(){
