@@ -125,6 +125,25 @@
     </div>
   </div>
 
+  <!-- ═══ الخدمات (العميل) ═══ -->
+  <div id="view-services" class="view wrap hidden">
+    <h2 class="vtitle">🔧 طلب صيانة</h2>
+    <p class="ihint">صِف عطل جهازك واختر مركز صيانة. ستحصل على كود تسليم وكود استلام لمتابعة جهازك بأمان.</p>
+    <div class="ibox">
+      <textarea id="svcProblem" class="field" rows="3" placeholder="صف العطل (مثال: لا يشحن، شاشة مكسورة...)"></textarea>
+      <select id="svcCenter" class="field"></select>
+      <button class="btn" onclick="createService()" id="svcBtn">إرسال طلب الصيانة</button>
+    </div>
+    <h2 class="vtitle" style="margin-top:22px;">📋 طلبات صيانتي</h2>
+    <div id="svcList"></div>
+  </div>
+
+  <!-- ═══ المركز ═══ -->
+  <div id="view-center" class="view wrap hidden">
+    <h2 class="vtitle">🔧 طلبات الصيانة الواردة</h2>
+    <div id="centerList"></div>
+  </div>
+
   <!-- ═══ المورّد ═══ -->
   <div id="view-sup-products" class="view wrap hidden">
     <h2 class="vtitle">🏷️ منتجاتي</h2>
@@ -175,6 +194,10 @@
     <h2 class="vtitle">📋 كل الطلبات</h2>
     <div id="admOrders"></div>
   </div>
+  <div id="view-adm-services" class="view wrap hidden">
+    <h2 class="vtitle">🔧 كل طلبات الصيانة</h2>
+    <div id="admServices"></div>
+  </div>
 
   <footer>© سما فون — نفس منتجات وحسابات التطبيق · <a href="/privacy.html">سياسة الخصوصية</a></footer>
 </div>
@@ -214,6 +237,9 @@
   .totrow{display:flex;justify-content:space-between;font-size:14px;color:var(--muted);margin-bottom:5px;}
   .totrow.big{font-size:18px;font-weight:800;color:var(--text);}
   .sheet-actions{display:flex;gap:10px;margin-top:18px;}
+  .sheet-alt{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:10px;}
+  .wa-small{color:var(--green);font-weight:700;font-size:13px;cursor:pointer;}
+  .linkbtn{background:none;border:none;color:var(--muted);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;}
   .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:11px 20px;border-radius:12px;font-weight:700;font-size:14px;z-index:60;}
   .roletag{max-width:1100px;margin:8px auto 0;padding:0 16px;color:#fff;font-size:13px;font-weight:700;opacity:.95;}
   textarea.field{resize:vertical;font-family:inherit;}
@@ -266,15 +292,22 @@
   let myRole = 'customer', myName = '', myPhone = '', myPerms = {};
   // بيانات الأدوار
   let supProducts = [], supOrders = [], repAvail = [], repMine = [], admPending = [], admUsers = [], admOrders = [];
+  let centers = [], myServices = [], centerServices = [], admServices = [];
+  const SVC_STATUS = {
+    pending:{t:'بانتظار الاستلام',c:'#d97706'}, received:{t:'تم الاستلام',c:'#2563eb'},
+    quoted:{t:'بانتظار موافقتك',c:'#7c3aed'}, approved:{t:'قيد الإصلاح',c:'#0891b2'},
+    rejected:{t:'رفضت التكلفة',c:'#dc2626'}, done:{t:'تم التسليم',c:'#059669'}, cancelled:{t:'ملغي',c:'#6b7280'},
+  };
   const subs = {};   // إلغاء الاشتراكات اللحظية عند الخروج
   let mkImages = [], pImage = null;
 
   // القوائم حسب الدور — كل عنصر [مفتاح العرض, التسمية]
   const NAV = {
-    customer: [['store','🛍️ المتجر'],['orders','📦 طلباتي'],['meshkilati','🛠️ مشكلتي'],['info','💳 الدفع والشحن']],
+    customer: [['store','🛍️ المتجر'],['orders','📦 طلباتي'],['services','🔧 الخدمات'],['meshkilati','🛠️ مشكلتي'],['info','💳 الدفع والشحن']],
     supplier: [['sup-products','🏷️ منتجاتي'],['sup-add','➕ إضافة منتج'],['sup-orders','📦 الطلبات'],['meshkilati','🛠️ مشكلتي']],
     rep:      [['rep-available','🛵 متاح'],['rep-mine','🚚 توصيلاتي']],
-    admin:    [['adm-pending','🕵️ مراجعة'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['store','🛍️ المتجر']],
+    center:   [['center','🔧 طلبات الصيانة']],
+    admin:    [['adm-pending','🕵️ مراجعة'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['adm-services','🔧 الصيانة'],['store','🛍️ المتجر']],
   };
   const ROLE_AR = { customer:'عميل', supplier:'مورّد', rep:'مندوب', admin:'إدارة', center:'مركز صيانة' };
 
@@ -422,9 +455,11 @@
 
     // اشتراكات حسب الدور
     if(myRole==='customer' || myRole==='admin') watchMyOrders();
+    if(myRole==='customer'){ loadCenters(); watchMyServices(); }
     if(myRole==='supplier'){ watchSupProducts(); watchSupOrders(); fillCatSelect(); }
     if(myRole==='rep'){ watchRepAvailable(); watchRepMine(); }
-    if(myRole==='admin'){ watchPending(); watchUsers(); watchAllOrders(); }
+    if(myRole==='center'){ watchCenterServices(); }
+    if(myRole==='admin'){ watchPending(); watchUsers(); watchAllOrders(); watchAdmServices(); }
 
     // العرض الافتراضي = أول عنصر في قائمة الدور
     showView((NAV[myRole]||NAV.customer)[0][0]);
@@ -472,6 +507,7 @@
       'sup-products': renderSupProducts, 'sup-orders': renderSupOrders,
       'rep-available': renderRepAvail, 'rep-mine': renderRepMine,
       'adm-pending': renderPending, 'adm-users': renderUsers, 'adm-orders': renderAdmOrders,
+      services: renderServices, center: renderCenter, 'adm-services': renderAdmServices,
     };
     if(R[v]) R[v]();
   }
@@ -571,9 +607,39 @@
         <div class="totrow big"><span>الإجمالي</span><span>${total.toLocaleString()} ر.ي</span></div>
       </div>
       <div class="sheet-actions">
-        <button class="btn ghost" style="flex:0 0 auto;" onclick="closeModal()">إغلاق</button>
-        <a class="btn green" style="flex:1;text-align:center;" href="https://wa.me/${WHATSAPP}?text=${detailMsg()}" target="_blank" onclick="closeModal()">📲 طلب عبر واتساب</a>
+        <button class="btn" style="flex:1;" id="orderBtn" onclick="placeOrder()">🛒 تأكيد الطلب</button>
+      </div>
+      <div class="sheet-alt">
+        <a class="wa-small" href="https://wa.me/${WHATSAPP}?text=${detailMsg()}" target="_blank">📲 أو اطلب عبر واتساب</a>
+        <button class="linkbtn" onclick="closeModal()">إغلاق</button>
       </div>`;
+  }
+
+  function gen4(){ return String(Math.floor(Math.random()*10000)).padStart(4,'0'); }
+  async function placeOrder(){
+    const p = detailP; if(!p) return;
+    const sub = p.price||0, fee = shipFee(selShip, sub);
+    const uid = auth.currentUser.uid, now = Date.now();
+    const btn = document.getElementById('orderBtn'); btn.disabled=true; btn.textContent='جارٍ إرسال الطلب…';
+    try{
+      const ref = db.collection('orders').doc();
+      const pm = (selPay && selPay.id==='cash-on-delivery') ? 'cod' : (selPay ? 'wallet' : 'cod');
+      const order = {
+        id:ref.id, productId:p.id, productName:p.nameAr||'منتج', price:sub, customerId:uid,
+        phone:myPhone||'', supplierId:(p.supplierId??null), repId:null, status:'pending',
+        paymentMethod:pm, deliveryFee:fee, adminSeenAt:null, adminPickupSeenAt:null,
+        createdAt:now, updatedAt:now,
+      };
+      if(selShip) order.shippingLabel = selShip.labelAr;
+      if(p.commission) order.commission = p.commission;   // عمولة الإدارة مثبّتة وقت الطلب
+      const batch = db.batch();
+      batch.set(ref, order);
+      batch.set(ref.collection('secrets').doc('pickup'),   { code: gen4() });   // كود استلام المندوب من المورد
+      batch.set(ref.collection('secrets').doc('delivery'), { code: gen4() });   // كود تسليم المندوب للعميل
+      await batch.commit();
+      closeModal(); toast('تم إرسال طلبك ✅'); showView('orders');
+    }catch(e){ toast('تعذّر إرسال الطلب: '+(e.message||e.code||'')); }
+    finally{ btn.disabled=false; btn.textContent='🛒 تأكيد الطلب'; }
   }
   function detailMsg(){
     const p = detailP; const sub=p.price||0, fee=shipFee(selShip,sub), total=sub+fee;
@@ -815,6 +881,151 @@
     const el=document.getElementById('admOrders'); if(!el) return;
     if(!admOrders.length){ el.innerHTML='<div class="center">لا طلبات بعد.</div>'; return; }
     el.innerHTML=admOrders.slice(0,100).map(o=>orderCardHTML(o, true)).join('');
+  }
+
+  // ═══════════════ الخدمات — العميل ═══════════════
+  async function loadCenters(){
+    try{
+      const s=await db.collection('centers').where('active','==',true).get();
+      centers=s.docs.map(d=>({id:d.id,...d.data()}));
+    }catch(e){ centers=[]; }
+    fillCenterSelect();
+  }
+  function fillCenterSelect(){
+    const el=document.getElementById('svcCenter'); if(!el) return;
+    el.innerHTML = centers.length
+      ? '<option value="">— اختر مركز الصيانة —</option>'+centers.map(c=>`<option value="${c.id}">${c.businessName||c.ownerName||'مركز'}${c.address?' — '+c.address:''}</option>`).join('')
+      : '<option value="">لا مراكز متاحة حاليًا</option>';
+  }
+  function watchMyServices(){
+    const uid=auth.currentUser.uid;
+    subs.mySvc && subs.mySvc();
+    subs.mySvc=db.collection('serviceOrders').where('customerId','==',uid).onSnapshot(s=>{
+      myServices=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      if(currentView==='services') renderServices();
+    },()=>{});
+  }
+  async function createService(){
+    const problem=document.getElementById('svcProblem').value.trim();
+    const centerId=document.getElementById('svcCenter').value;
+    if(!problem){ toast('صف العطل أولًا'); return; }
+    if(!centerId){ toast('اختر مركز صيانة'); return; }
+    const center=centers.find(c=>c.id===centerId);
+    const btn=document.getElementById('svcBtn'); btn.disabled=true; btn.textContent='جارٍ الإرسال…';
+    try{
+      await db.collection('serviceOrders').add({
+        customerId:auth.currentUser.uid, customerPhone:myPhone||'',
+        centerId, centerName:(center?(center.businessName||center.ownerName||''):''),
+        problem, status:'pending', intakeCode:gen4(), returnCode:gen4(), createdAt:Date.now(),
+      });
+      toast('أُرسل طلب الصيانة ✅'); document.getElementById('svcProblem').value='';
+    }catch(e){ toast('تعذّر الإرسال: '+(e.message||e.code||'')); }
+    finally{ btn.disabled=false; btn.textContent='إرسال طلب الصيانة'; }
+  }
+  function renderServices(){
+    const el=document.getElementById('svcList'); if(!el) return;
+    if(!myServices.length){ el.innerHTML='<div class="center">لا طلبات صيانة بعد.</div>'; return; }
+    el.innerHTML=myServices.map(o=>{
+      const st=SVC_STATUS[o.status]||{t:o.status,c:'#888'};
+      const total=(o.price||0)+(o.partsCost||0);
+      let extra='';
+      if(o.status==='pending') extra=`<div class="ometa">🔑 كود التسليم للمركز: <b class="ucode" onclick="copyTxt('${o.intakeCode}')">${o.intakeCode}</b></div>`;
+      if(o.status==='quoted') extra=`<div class="ometa">💰 التكلفة: <b>${total.toLocaleString()} ر.ي</b>${o.partsCost?` (قطع: ${o.partsCost.toLocaleString()})`:''}</div>
+        <div class="row-actions"><button class="btn green sm" onclick="decideService('${o.id}',true)">موافقة</button><button class="btn red sm" onclick="decideService('${o.id}',false)">رفض</button></div>`;
+      if((o.status==='approved') && o.ready) extra=`<div class="ometa" style="color:#059669">✅ جهازك جاهز للاستلام</div><div class="ometa">🔑 كود الاستلام: <b class="ucode" onclick="copyTxt('${o.returnCode}')">${o.returnCode}</b></div>`;
+      else if(o.status==='approved') extra=`<div class="ometa">🔧 قيد الإصلاح…</div>`;
+      const canCancel = o.status==='pending';
+      return `<div class="ocard">
+        <div class="orow"><b>${o.centerName||'مركز صيانة'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="ometa">🛠️ ${o.problem||''}</div>
+        ${extra}
+        <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div>
+        ${canCancel?`<div class="row-actions"><button class="btn ghost sm" onclick="cancelService('${o.id}')">إلغاء الطلب</button></div>`:''}
+      </div>`;
+    }).join('');
+  }
+  async function decideService(id, approve){
+    try{ await db.collection('serviceOrders').doc(id).update({ status:approve?'approved':'rejected', decidedAt:Date.now() });
+      toast(approve?'وافقت على الإصلاح ✅':'رفضت التكلفة'); }
+    catch(e){ toast('تعذّرت العملية'); }
+  }
+  async function cancelService(id){
+    if(!confirm('إلغاء طلب الصيانة؟')) return;
+    try{ await db.collection('serviceOrders').doc(id).update({ status:'cancelled' }); toast('أُلغي الطلب'); }
+    catch(e){ toast('تعذّر الإلغاء'); }
+  }
+
+  // ═══════════════ الخدمات — المركز ═══════════════
+  function watchCenterServices(){
+    const uid=auth.currentUser.uid;
+    subs.cenSvc && subs.cenSvc();
+    subs.cenSvc=db.collection('serviceOrders').where('centerId','==',uid).onSnapshot(s=>{
+      centerServices=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      if(currentView==='center') renderCenter();
+    },()=>{});
+  }
+  function renderCenter(){
+    const el=document.getElementById('centerList'); if(!el) return;
+    if(!centerServices.length){ el.innerHTML='<div class="center">لا طلبات صيانة واردة.</div>'; return; }
+    el.innerHTML=centerServices.map(o=>{
+      const st=SVC_STATUS[o.status]||{t:o.status,c:'#888'};
+      let act='';
+      if(o.status==='pending') act=`<button class="btn amber sm" onclick="cenIntake('${o.id}')">📥 استلام الجهاز (كود)</button>`;
+      else if(o.status==='received') act=`<button class="btn sm" onclick="cenQuote('${o.id}')">💰 تحديد التكلفة</button>`;
+      else if(o.status==='approved' && !o.ready) act=`<button class="btn sm" onclick="cenReady('${o.id}')">🔔 إبلاغ الجاهزية</button>`;
+      else if(o.status==='approved' && o.ready) act=`<button class="btn green sm" onclick="cenComplete('${o.id}')">✅ تسليم للعميل (كود)</button>`;
+      const total=(o.price||0)+(o.partsCost||0);
+      return `<div class="ocard">
+        <div class="orow"><b>${o.problem||'عطل'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="ometa">📞 ${o.customerPhone||'—'}${total?` · 💰 ${total.toLocaleString()} ر.ي`:''}</div>
+        <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div>
+        <div class="row-actions">${act}</div></div>`;
+    }).join('');
+  }
+  async function cenIntake(id){
+    const o=centerServices.find(x=>x.id===id); if(!o) return;
+    const code=prompt('أدخل كود التسليم الذي يعرضه العميل:'); if(code===null) return;
+    if(code.trim()!==o.intakeCode){ toast('كود التسليم غير صحيح'); return; }
+    try{ await db.collection('serviceOrders').doc(id).update({status:'received', receivedAt:Date.now()}); toast('تم استلام الجهاز ✅'); }
+    catch(e){ toast('تعذّرت العملية'); }
+  }
+  async function cenQuote(id){
+    const price=parseFloat(prompt('تكلفة الإصلاح (ر.ي):')||''); if(!(price>0)){ toast('أدخل تكلفة صحيحة'); return; }
+    const parts=parseFloat(prompt('تكلفة القطع (0 إن لا يوجد):')||'0')||0;
+    try{ await db.collection('serviceOrders').doc(id).update({status:'quoted', price, partsCost:parts>0?parts:0, quotedAt:Date.now()}); toast('أُرسلت التكلفة للعميل'); }
+    catch(e){ toast('تعذّرت العملية'); }
+  }
+  async function cenReady(id){
+    try{ await db.collection('serviceOrders').doc(id).update({status:'approved', ready:true, readyAt:Date.now()}); toast('أُبلغ العميل بالجاهزية 🔔'); }
+    catch(e){ toast('تعذّرت العملية'); }
+  }
+  async function cenComplete(id){
+    const o=centerServices.find(x=>x.id===id); if(!o) return;
+    const code=prompt('أدخل كود الاستلام الذي يعرضه العميل:'); if(code===null) return;
+    if(code.trim()!==o.returnCode){ toast('كود الاستلام غير صحيح'); return; }
+    try{ await db.collection('serviceOrders').doc(id).update({status:'done', doneAt:Date.now()}); toast('تم تسليم الجهاز ✅'); }
+    catch(e){ toast('تعذّرت العملية'); }
+  }
+
+  // ═══════════════ الخدمات — الإدارة ═══════════════
+  function watchAdmServices(){
+    subs.admSvc && subs.admSvc();
+    subs.admSvc=db.collection('serviceOrders').onSnapshot(s=>{
+      admServices=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      if(currentView==='adm-services') renderAdmServices();
+    },()=>{});
+  }
+  function renderAdmServices(){
+    const el=document.getElementById('admServices'); if(!el) return;
+    if(!admServices.length){ el.innerHTML='<div class="center">لا طلبات صيانة.</div>'; return; }
+    el.innerHTML=admServices.slice(0,100).map(o=>{
+      const st=SVC_STATUS[o.status]||{t:o.status,c:'#888'};
+      const total=(o.price||0)+(o.partsCost||0);
+      return `<div class="ocard">
+        <div class="orow"><b>${o.centerName||'مركز'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="ometa">🛠️ ${o.problem||''} · 📞 ${o.customerPhone||'—'}${total?` · 💰 ${total.toLocaleString()} ر.ي`:''}</div>
+        <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div></div>`;
+    }).join('');
   }
 
   function render(){
