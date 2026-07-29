@@ -186,7 +186,10 @@
     <div id="admPending"></div>
   </div>
   <div id="view-adm-users" class="view wrap hidden">
-    <h2 class="vtitle">👥 إدارة المستخدمين</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:1100px;margin:0 auto;">
+      <h2 class="vtitle" style="margin:0;">👥 إدارة المستخدمين</h2>
+      <button class="btn green sm" onclick="exportUsersExcel()">📊 تصدير Excel</button>
+    </div>
     <input id="uq" class="search" placeholder="ابحث بالاسم أو الرقم أو الرمز..." oninput="renderUsers()" />
     <div id="admUsers"></div>
   </div>
@@ -876,6 +879,25 @@
       <span class="pstatus" style="background:${u.active!==false?'#05966922':'#dc262622'};color:${u.active!==false?'#059669':'#dc2626'}">${u.active!==false?'نشط':'موقوف'}</span>
     </div></div>`).join('');
   }
+  // تصدير المستخدمين إلى Excel (CSV بترميز UTF-8 مع BOM ليعرض العربية صحيحة)
+  function exportUsersExcel(){
+    if(!admUsers.length){ toast('لا مستخدمين للتصدير'); return; }
+    const esc = (v)=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+    const header = ['الاسم','الرقم','البريد','الدور','الرمز','الحالة'];
+    const rows = admUsers.map(u=>[
+      u.name||'', u.phone||'', u.email||'', (ROLE_AR[u.role]||u.role||'عميل'),
+      String(u.id).slice(-6).toUpperCase(), (u.active!==false?'نشط':'موقوف')
+    ].map(esc).join(','));
+    const csv = '﻿' + [header.map(esc).join(','), ...rows].join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'samaphone-users.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast(`تم تصدير ${admUsers.length} مستخدم ✅`);
+  }
+
   function watchAllOrders(){
     subs.allO && subs.allO();
     subs.allO=db.collection('orders').onSnapshot(s=>{
