@@ -62,10 +62,19 @@
       <button id="tabPhone" class="active" onclick="setMode('phone')">برقم الجوال</button>
       <button id="tabEmail" onclick="setMode('email')">بالبريد</button>
     </div>
+    <input id="regName" class="field hidden" placeholder="اسمك" />
     <input id="identifier" class="field" placeholder="7XXXXXXXX" />
     <input id="password" class="field" type="password" placeholder="كلمة المرور" />
-    <button class="btn" style="width:100%;" onclick="doLogin()">دخول</button>
+    <button id="submitBtn" class="btn" style="width:100%;" onclick="submitAuth()">دخول</button>
+    <div style="text-align:center; color:var(--muted); font-size:13px; margin:12px 0;">أو</div>
+    <button class="btn" style="width:100%; background:#fff; color:#3c4043; border:1px solid var(--border);" onclick="doGoogle()">
+      <span style="color:#4285F4; font-weight:700;">G</span> الدخول بحساب Google
+    </button>
     <div id="loginErr" class="err"></div>
+    <p style="margin-top:14px;">
+      <span id="switchTxt">ليس لديك حساب؟</span>
+      <a id="switchLink" style="color:var(--primary); font-weight:700; cursor:pointer;" onclick="toggleRegister()">سجّل الآن</a>
+    </p>
   </div>
 </div>
 
@@ -105,7 +114,19 @@
   const WHATSAPP = "967783454544";
   const PHONE_DOMAIN = "phone.samaphone.local";
   let mode = "phone";
+  let registerMode = false;
   let products = [], categories = [], activeCat = null;
+
+  function toggleRegister(){
+    registerMode = !registerMode;
+    document.getElementById('regName').classList.toggle('hidden', !registerMode || mode==='email' ? !registerMode : false);
+    document.getElementById('regName').classList.toggle('hidden', !registerMode);
+    document.getElementById('submitBtn').textContent = registerMode ? 'إنشاء حساب' : 'دخول';
+    document.getElementById('switchTxt').textContent = registerMode ? 'لديك حساب؟' : 'ليس لديك حساب؟';
+    document.getElementById('switchLink').textContent = registerMode ? 'سجّل الدخول' : 'سجّل الآن';
+    document.getElementById('loginErr').textContent = '';
+  }
+  function submitAuth(){ registerMode ? doRegister() : doLogin(); }
 
   function setMode(m){
     mode = m;
@@ -139,6 +160,45 @@
       err.textContent = (e.code==='auth/wrong-password'||e.code==='auth/user-not-found'||e.code==='auth/invalid-credential')
         ? 'بيانات الدخول غير صحيحة.'
         : (e.code==='auth/unauthorized-domain' ? 'النطاق غير مُصرّح في Firebase — أضِف نطاق الموقع في Authentication ← Settings ← Authorized domains.' : ('تعذّر الدخول: '+(e.message||e.code)));
+    }
+  }
+  async function doRegister(){
+    const err = document.getElementById('loginErr'); err.textContent='';
+    if(mode==='email'){ err.textContent='التسجيل الجديد بالرقم فقط. اختر «برقم الجوال».'; return; }
+    const name = document.getElementById('regName').value.trim();
+    const id = document.getElementById('identifier').value.trim();
+    const pw = document.getElementById('password').value;
+    if(!id || !pw || pw.length<6){ err.textContent='أدخل رقمًا وكلمة مرور (٦ أحرف على الأقل).'; return; }
+    const e164 = toE164(id);
+    if(!/^\+\d{9,15}$/.test(e164)){ err.textContent='رقم الجوال غير صحيح.'; return; }
+    const digits = e164.replace(/^\+/,'');
+    const email = digits + '@' + PHONE_DOMAIN;
+    const local = e164.replace(/^\+967/,'');
+    try{
+      const cred = await auth.createUserWithEmailAndPassword(email, pw);
+      const uid = cred.user.uid;
+      await db.collection('users').doc(uid).set({ role:'customer', active:true, phone: local, name: name, createdAt: Date.now() });
+      await db.collection('phoneIndex').doc(digits).set({ uid, email, createdAt: Date.now() }).catch(()=>{});
+    }catch(e){
+      err.textContent = e.code==='auth/email-already-in-use' ? 'هذا الرقم مسجّل مسبقًا. سجّل الدخول.'
+        : (e.code==='auth/unauthorized-domain' ? 'النطاق غير مُصرّح في Firebase (Authorized domains).' : ('تعذّر التسجيل: '+(e.message||e.code)));
+    }
+  }
+  async function doGoogle(){
+    const err = document.getElementById('loginErr'); err.textContent='';
+    try{
+      const provider = new firebase.auth.GoogleAuthProvider();
+      const res = await auth.signInWithPopup(provider);
+      const uid = res.user.uid;
+      // ننشئ سجل المستخدم إن كان جديدًا (دور عميل).
+      const doc = await db.collection('users').doc(uid).get();
+      if(!doc.exists){
+        await db.collection('users').doc(uid).set({ role:'customer', active:true, phone:'', name: res.user.displayName||'', email: res.user.email||'', createdAt: Date.now() });
+      }
+    }catch(e){
+      err.textContent = e.code==='auth/unauthorized-domain'
+        ? 'أضِف نطاق الموقع في Firebase ← Authentication ← Authorized domains.'
+        : (e.code==='auth/operation-not-allowed' ? 'فعّل مزوّد Google في Firebase ← Authentication ← Sign-in method.' : ('تعذّر الدخول بـGoogle: '+(e.message||e.code)));
     }
   }
   function logout(){ auth.signOut(); }
