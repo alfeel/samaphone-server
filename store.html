@@ -85,16 +85,76 @@
       <div class="logo"><span class="box">📱</span> <div><div>سما فون</div><div class="tag">متجرك الأول للجوالات والإلكترونيات</div></div></div>
       <button class="btn ghost" style="background:#fff;" onclick="logout()">خروج</button>
     </div>
+    <nav class="nav">
+      <button id="nav-store" class="navb active" onclick="showView('store')">🛍️ المتجر</button>
+      <button id="nav-orders" class="navb" onclick="showView('orders')">📦 طلباتي <span id="ordersCount" class="ncount hidden">0</span></button>
+      <button id="nav-info" class="navb" onclick="showView('info')">💳 الدفع والشحن</button>
+    </nav>
   </header>
-  <div class="wrap">
+
+  <!-- عرض المتجر -->
+  <div id="view-store" class="wrap">
     <input id="q" class="search" placeholder="ابحث عن منتج..." oninput="render()" />
     <div id="cats" class="cats"></div>
     <div id="grid" class="grid"></div>
     <div id="empty" class="center hidden">لا توجد منتجات مطابقة.</div>
   </div>
+
+  <!-- طلباتي -->
+  <div id="view-orders" class="wrap hidden">
+    <h2 class="vtitle">📦 طلباتي</h2>
+    <div id="ordersList"></div>
+  </div>
+
+  <!-- الدفع والشحن -->
+  <div id="view-info" class="wrap hidden">
+    <h2 class="vtitle">🚚 خيارات الشحن</h2>
+    <div id="shipInfo" class="ibox"></div>
+    <h2 class="vtitle" style="margin-top:22px;">💳 طرق الدفع</h2>
+    <p class="ihint">حوّل المبلغ إلى إحدى المحافظ التالية ثم أرسل الإشعار مع طلبك. المس الرقم لنسخه.</p>
+    <div id="payInfo" class="ibox"></div>
+  </div>
+
   <footer>© سما فون — نفس منتجات وحسابات التطبيق · <a href="/privacy.html">سياسة الخصوصية</a></footer>
 </div>
 
+<!-- نافذة الطلب -->
+<div id="modal" class="modal hidden" onclick="if(event.target===this)closeModal()">
+  <div class="sheet" id="sheet"></div>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<style>
+  .nav{display:flex;gap:8px;max-width:1100px;margin:10px auto 0;padding:0 16px;flex-wrap:wrap;}
+  .navb{background:rgba(255,255,255,.18);color:#fff;border:none;border-radius:12px;padding:9px 16px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .navb.active{background:#fff;color:var(--primary);}
+  .ncount{background:#e11d48;color:#fff;border-radius:10px;font-size:11px;padding:1px 7px;font-weight:700;}
+  .vtitle{max-width:1100px;margin:4px auto 12px;font-size:19px;color:var(--text);}
+  .ihint{max-width:1100px;margin:-6px auto 12px;color:var(--muted);font-size:13px;}
+  .ibox{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
+  .irow{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .irow b{font-size:15px;color:var(--text);}
+  .irow .det{color:var(--muted);font-size:13px;margin-top:3px;}
+  .acct{color:var(--primary);font-weight:700;font-size:15px;margin-top:5px;cursor:pointer;user-select:all;letter-spacing:.5px;}
+  .ocard{max-width:1100px;margin:0 auto 12px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:15px 17px;}
+  .orow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;}
+  .orow b{font-size:16px;color:var(--text);}
+  .obadge{border-radius:10px;padding:3px 12px;font-size:12px;font-weight:700;white-space:nowrap;}
+  .ometa{color:var(--muted);font-size:13px;margin-top:3px;}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:0;}
+  .sheet{background:var(--card);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto;}
+  .sheet h3{font-size:19px;margin:0 0 4px;color:var(--text);}
+  .sh-sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
+  .opt{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px;}
+  .chip{border:1.5px solid var(--border);background:var(--bg);border-radius:12px;padding:9px 14px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;color:var(--text);}
+  .chip.sel{border-color:var(--primary);background:rgba(37,99,235,.10);color:var(--primary);}
+  .lbl{font-size:13px;color:var(--muted);font-weight:700;margin-top:14px;}
+  .totbox{margin-top:16px;border-top:1px dashed var(--border);padding-top:12px;}
+  .totrow{display:flex;justify-content:space-between;font-size:14px;color:var(--muted);margin-bottom:5px;}
+  .totrow.big{font-size:18px;font-weight:800;color:var(--text);}
+  .sheet-actions{display:flex;gap:10px;margin-top:18px;}
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:11px 20px;border-radius:12px;font-weight:700;font-size:14px;z-index:60;}
+</style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -116,6 +176,18 @@
   let mode = "phone";
   let registerMode = false;
   let products = [], categories = [], activeCat = null;
+  let shipping = [], payments = [], myOrders = [], ordersUnsub = null;
+  let currentView = 'store', selShip = null, selPay = null, detailP = null;
+
+  const ORDER_STATUS = {
+    pending:   { t:'قيد المراجعة', c:'#d97706' },
+    confirmed: { t:'تم التأكيد',   c:'#2563eb' },
+    ready:     { t:'جاهز للتوصيل', c:'#7c3aed' },
+    assigned:  { t:'مع المندوب',   c:'#0891b2' },
+    picked_up: { t:'في الطريق',    c:'#0891b2' },
+    delivered: { t:'تم التسليم',   c:'#059669' },
+    cancelled: { t:'ملغي',         c:'#dc2626' },
+  };
 
   function toggleRegister(){
     registerMode = !registerMode;
@@ -201,7 +273,7 @@
         : (e.code==='auth/operation-not-allowed' ? 'فعّل مزوّد Google في Firebase ← Authentication ← Sign-in method.' : ('تعذّر الدخول بـGoogle: '+(e.message||e.code)));
     }
   }
-  function logout(){ auth.signOut(); }
+  function logout(){ if(ordersUnsub){ ordersUnsub(); ordersUnsub=null; } auth.signOut(); }
 
   auth.onAuthStateChanged(async (user)=>{
     if(user){
@@ -223,7 +295,154 @@
       const snap = await db.collection('products').where('status','==','approved').get();
       products = snap.docs.map(d=>({id:d.id, ...d.data()}));
     }catch(e){ products=[]; }
+    try{
+      const s = await db.collection('settings').doc('shipping').get();
+      shipping = ((s.data()?.items)||[]).filter(x=>x.enabled!==false);
+    }catch(e){ shipping=[]; }
+    try{
+      const p = await db.collection('settings').doc('payments').get();
+      payments = ((p.data()?.items)||[]).filter(x=>x.enabled!==false);
+    }catch(e){ payments=[]; }
+    watchMyOrders();
     renderCats(); render();
+  }
+
+  // نتابع طلبات العميل لحظيًا (ترتيب محليًا — بلا فهرس مركّب).
+  function watchMyOrders(){
+    const uid = auth.currentUser && auth.currentUser.uid;
+    if(!uid) return;
+    if(ordersUnsub){ ordersUnsub(); ordersUnsub=null; }
+    ordersUnsub = db.collection('orders').where('customerId','==',uid).onSnapshot(
+      (snap)=>{
+        myOrders = snap.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+        const active = myOrders.filter(o=>o.status!=='delivered' && o.status!=='cancelled').length;
+        const badge = document.getElementById('ordersCount');
+        badge.textContent = active; badge.classList.toggle('hidden', active===0);
+        if(currentView==='orders') renderOrders();
+      },
+      ()=>{ myOrders=[]; }
+    );
+  }
+
+  // ── التنقّل بين الأقسام ──────────────────────────────────
+  function showView(v){
+    currentView = v;
+    ['store','orders','info'].forEach(x=>{
+      document.getElementById('view-'+x).classList.toggle('hidden', x!==v);
+      document.getElementById('nav-'+x).classList.toggle('active', x===v);
+    });
+    if(v==='orders') renderOrders();
+    if(v==='info') renderInfo();
+  }
+
+  function fmtDate(ts){
+    if(!ts) return '';
+    try{ return new Date(ts).toLocaleString('ar', {dateStyle:'medium', timeStyle:'short'}); }
+    catch(e){ return new Date(ts).toLocaleString(); }
+  }
+
+  function renderOrders(){
+    const el = document.getElementById('ordersList');
+    if(!myOrders.length){ el.innerHTML = '<div class="center">لا توجد طلبات بعد. تصفّح المتجر واطلب منتجك الأول 🛍️</div>'; return; }
+    el.innerHTML = myOrders.map(o=>{
+      const st = ORDER_STATUS[o.status] || { t:o.status||'—', c:'#888' };
+      const fee = o.deliveryFee ? ` + شحن ${(o.deliveryFee).toLocaleString()}` : '';
+      const total = ((o.price||0)+(o.deliveryFee||0)).toLocaleString();
+      return `<div class="ocard">
+        <div class="orow"><b>${o.productName||'منتج'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="ometa">💵 ${(o.price||0).toLocaleString()}${fee} = <b>${total} ر.ي</b>${o.orderNo?` · طلب #${o.orderNo}`:''}</div>
+        ${o.shippingLabel?`<div class="ometa">🚚 ${o.shippingLabel}</div>`:''}
+        ${o.paymentMethod?`<div class="ometa">💳 ${payLabel(o.paymentMethod)}</div>`:''}
+        <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div>
+      </div>`;
+    }).join('');
+  }
+  function payLabel(m){
+    const f = payments.find(p=>p.id===m); if(f) return f.labelAr;
+    return m==='cash-on-delivery' ? 'الدفع عند الاستلام' : m;
+  }
+
+  function shipDesc(s){
+    if(s.ruleType==='free') return 'مجاني';
+    if(s.ruleType==='threshold') return `مجاني فوق ${(s.freeThreshold||0).toLocaleString()} ر.ي، وإلا ${(s.fee||0).toLocaleString()} ر.ي`;
+    return `${(s.fee||0).toLocaleString()} ر.ي`;
+  }
+  function renderInfo(){
+    const sh = document.getElementById('shipInfo');
+    sh.innerHTML = shipping.length ? shipping.map(s=>`
+      <div class="irow"><b>${s.labelAr||'شحن'}${s.isDefault?' ⭐':''}</b><span style="color:var(--muted);font-size:14px;">${shipDesc(s)}</span></div>`).join('')
+      : '<div class="center">لم تُضبط خيارات الشحن بعد.</div>';
+    const pm = document.getElementById('payInfo');
+    pm.innerHTML = payments.length ? payments.map(p=>`
+      <div class="irow"><div>
+        <b>${p.labelAr||''}${p.isDefault?' ⭐':''}</b>
+        ${p.accountNumber?`<div class="acct" onclick="copyTxt('${p.accountNumber}')">📋 ${p.accountNumber}</div>`:''}
+        ${p.accountName?`<div class="det">صاحب الحساب: ${p.accountName}</div>`:''}
+        ${p.detailsAr?`<div class="det">${p.detailsAr}</div>`:''}
+      </div></div>`).join('')
+      : '<div class="center">لم تُضبط طرق الدفع بعد.</div>';
+  }
+
+  function copyTxt(t){
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(()=>toast('تم نسخ الرقم ✅')).catch(()=>toast(t));
+  }
+  let toastT=null;
+  function toast(msg){
+    const el=document.getElementById('toast'); el.textContent=msg; el.classList.remove('hidden');
+    if(toastT) clearTimeout(toastT); toastT=setTimeout(()=>el.classList.add('hidden'), 1800);
+  }
+
+  // ── نافذة الطلب مع الشحن والدفع ───────────────────────────
+  function shipFee(opt, subtotal){
+    if(!opt) return 0;
+    if(opt.ruleType==='free') return 0;
+    if(opt.ruleType==='threshold') return subtotal >= (opt.freeThreshold||0) ? 0 : (opt.fee||0);
+    return opt.fee||0;
+  }
+  function openDetail(id){
+    detailP = products.find(p=>p.id===id); if(!detailP) return;
+    selShip = shipping.find(s=>s.isDefault) || shipping[0] || null;
+    selPay  = payments.find(p=>p.isDefault) || payments[0] || null;
+    renderDetail();
+    document.getElementById('modal').classList.remove('hidden');
+  }
+  function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
+  function pickShip(id){ selShip = shipping.find(s=>s.id===id)||null; renderDetail(); }
+  function pickPay(id){ selPay = payments.find(p=>p.id===id)||null; renderDetail(); }
+
+  function renderDetail(){
+    const p = detailP; if(!p) return;
+    const sub = p.price||0, fee = shipFee(selShip, sub), total = sub+fee;
+    const shipChips = shipping.length ? shipping.map(s=>`<button class="chip ${selShip&&selShip.id===s.id?'sel':''}" onclick="pickShip('${s.id}')">${s.labelAr} · ${shipDesc(s)}</button>`).join('') : '<span class="det">لا خيارات شحن</span>';
+    const payChips = payments.length ? payments.map(m=>`<button class="chip ${selPay&&selPay.id===m.id?'sel':''}" onclick="pickPay('${m.id}')">${m.labelAr}</button>`).join('') : '<span class="det">لا طرق دفع</span>';
+    const payHint = selPay && selPay.accountNumber ? `<div class="det" style="margin-top:8px;">حوّل إلى <b class="acct" onclick="copyTxt('${selPay.accountNumber}')">📋 ${selPay.accountNumber}</b>${selPay.accountName?` — ${selPay.accountName}`:''}</div>` : '';
+    document.getElementById('sheet').innerHTML = `
+      <h3>${p.nameAr||'منتج'}</h3>
+      <div class="sh-sub">${p.inStock===false?'⚠️ غير متوفر حاليًا':'✅ متوفر'} · رمز المورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'الإدارة'}</div>
+      <div class="lbl">🚚 اختر الشحن</div>
+      <div class="opt">${shipChips}</div>
+      <div class="lbl">💳 اختر طريقة الدفع</div>
+      <div class="opt">${payChips}</div>
+      ${payHint}
+      <div class="totbox">
+        <div class="totrow"><span>سعر المنتج</span><span>${sub.toLocaleString()} ر.ي</span></div>
+        <div class="totrow"><span>الشحن${selShip?` (${selShip.labelAr})`:''}</span><span>${fee>0?fee.toLocaleString()+' ر.ي':'مجاني'}</span></div>
+        <div class="totrow big"><span>الإجمالي</span><span>${total.toLocaleString()} ر.ي</span></div>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn ghost" style="flex:0 0 auto;" onclick="closeModal()">إغلاق</button>
+        <a class="btn green" style="flex:1;text-align:center;" href="https://wa.me/${WHATSAPP}?text=${detailMsg()}" target="_blank" onclick="closeModal()">📲 طلب عبر واتساب</a>
+      </div>`;
+  }
+  function detailMsg(){
+    const p = detailP; const sub=p.price||0, fee=shipFee(selShip,sub), total=sub+fee;
+    let m = `مرحباً، أريد الطلب:\n📦 ${p.nameAr}\n💵 السعر: ${sub.toLocaleString()} ر.ي`;
+    if(selShip) m += `\n🚚 الشحن: ${selShip.labelAr} (${fee>0?fee.toLocaleString()+' ر.ي':'مجاني'})`;
+    m += `\n🧾 الإجمالي: ${total.toLocaleString()} ر.ي`;
+    if(selPay) m += `\n💳 الدفع: ${selPay.labelAr}${selPay.accountNumber?' — '+selPay.accountNumber:''}`;
+    m += `\n🏪 رمز المورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'الإدارة'}`;
+    if(p.specs) m += `\n📋 ${p.specs}`;
+    return encodeURIComponent(m);
   }
 
   function renderCats(){
@@ -254,7 +473,7 @@
           <div class="price">${(p.price||0).toLocaleString()} ر.ي</div>
           <div class="desc">${(p.descriptionAr||'').slice(0,90)}</div>
           <div class="stock ${p.inStock?'in':'out'}">${p.inStock?'متوفر':'غير متوفر'}</div>
-          <a class="btn green wa" href="https://wa.me/${WHATSAPP}?text=${orderMsg(p)}" target="_blank">طلب عبر واتساب</a>
+          <button class="btn green wa" onclick="openDetail('${p.id}')">🛒 اطلب الآن</button>
         </div>
       </div>`).join('');
   }
