@@ -509,7 +509,7 @@
     if(myRole==='rep'){ watchRepAvailable(); watchRepMine(); }
     if(myRole==='center'){ watchCenterServices(); }
     if(myRole==='admin'){
-      watchPending(); watchAllProducts(); watchUsers(); watchAllOrders(); watchAdmServices(); watchWorks();
+      watchPending(); watchAllProducts(); watchUsers(); watchAllOrders(); watchAdmServices(); watchWorks(); loadCenters();
       try{ const cf=await db.collection('settings').doc('config').get(); const d=cf.data()||{}; if(d.serviceCommission) cfgCommission.serviceCommission=d.serviceCommission; }catch(e){}
     }
 
@@ -1231,11 +1231,36 @@
     el.innerHTML=admServices.slice(0,100).map(o=>{
       const st=SVC_STATUS[o.status]||{t:o.status,c:'#888'};
       const total=(o.price||0)+(o.partsCost||0);
+      const active=o.status!=='done'&&o.status!=='cancelled';
       return `<div class="ocard">
         <div class="orow"><b>${o.centerName||'مركز'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
         <div class="ometa">🛠️ ${o.problem||''} · 📞 ${o.customerPhone||'—'}${total?` · 💰 ${total.toLocaleString()} ر.ي`:''}</div>
-        <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div></div>`;
+        <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div>
+        <div class="row-actions">
+          ${active?`<button class="btn sm" onclick="admReassignService('${o.id}')">🔄 تحويل لمركز آخر</button>`:''}
+          ${active?`<button class="btn red sm" onclick="admCancelService('${o.id}')">✕ إلغاء</button>`:''}
+        </div></div>`;
     }).join('');
+  }
+  async function admReassignService(id){
+    if(!centers.length) await loadCenters();
+    if(!centers.length){ toast('لا مراكز متاحة للتحويل'); return; }
+    document.getElementById('sheet').innerHTML=`
+      <h3>🔄 تحويل لمركز آخر</h3>
+      <div class="sh-sub">اختر المركز الجديد لهذا الطلب — يبدأ الاستلام من جديد.</div>
+      <div class="opt" style="flex-direction:column;gap:8px;">${centers.map(c=>`<button class="chip" style="text-align:right;width:100%;" onclick="doAdmReassignSvc('${id}','${c.id}','${String(c.businessName||c.ownerName||'مركز').replace(/'/g,'')}')">🔧 ${c.businessName||c.ownerName||'مركز'}${c.address?' — '+c.address:''}</button>`).join('')}</div>
+      <div class="sheet-alt"><button class="linkbtn" onclick="closeModal()">إغلاق</button></div>`;
+    document.getElementById('modal').classList.remove('hidden');
+  }
+  async function doAdmReassignSvc(id, centerId, centerName){
+    try{ await db.collection('serviceOrders').doc(id).update({ centerId, centerName, status:'pending', updatedAt:Date.now() });
+      closeModal(); toast('تم التحويل للمركز الجديد ✅'); }
+    catch(e){ toast('تعذّر التحويل: '+(e.code||e.message||'')); }
+  }
+  async function admCancelService(id){
+    if(!confirm('إلغاء طلب الصيانة؟')) return;
+    try{ await db.collection('serviceOrders').doc(id).update({ status:'cancelled', updatedAt:Date.now() }); toast('أُلغي الطلب'); }
+    catch(e){ toast('تعذّر الإلغاء: '+(e.code||e.message||'')); }
   }
 
   function render(){
