@@ -64,7 +64,10 @@
     </div>
     <input id="regName" class="field hidden" placeholder="اسمك" />
     <input id="identifier" class="field" placeholder="7XXXXXXXX" />
-    <input id="password" class="field" type="password" placeholder="كلمة المرور" />
+    <div class="pwwrap">
+      <input id="password" class="field" type="password" placeholder="كلمة المرور" style="margin-bottom:0;" />
+      <button type="button" class="pweye" onclick="togglePw()" id="pwEye" aria-label="إظهار كلمة المرور">👁️</button>
+    </div>
     <button id="submitBtn" class="btn" style="width:100%;" onclick="submitAuth()">دخول</button>
     <div style="text-align:center; color:var(--muted); font-size:13px; margin:12px 0;">أو</div>
     <button class="btn" style="width:100%; background:#fff; color:#3c4043; border:1px solid var(--border);" onclick="doGoogle()">
@@ -206,6 +209,31 @@
     <h2 class="vtitle">🔧 كل طلبات الصيانة</h2>
     <div id="admServices"></div>
   </div>
+  <div id="view-adm-finance" class="view wrap hidden">
+    <h2 class="vtitle">💰 المالية</h2>
+    <div id="admFinance"></div>
+  </div>
+  <div id="view-adm-works" class="view wrap hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;max-width:1100px;margin:0 auto;">
+      <h2 class="vtitle" style="margin:0;">🖼️ أعمالنا</h2>
+    </div>
+    <p class="ihint">مواضيع المراكز — اعتمدها لتظهر للجميع، أو احذفها.</p>
+    <div id="admWorks"></div>
+  </div>
+  <div id="view-adm-backup" class="view wrap hidden">
+    <h2 class="vtitle">💾 النسخ الاحتياطي والتصدير</h2>
+    <p class="ihint">نزّل نسخة كاملة من البيانات (JSON) أو صدّر أي قسم إلى Excel.</p>
+    <div class="ibox">
+      <button class="btn" onclick="backupAll()">💾 تنزيل نسخة كاملة (JSON)</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+        <button class="btn green sm" onclick="exportCsv('users')">👥 المستخدمون</button>
+        <button class="btn green sm" onclick="exportCsv('products')">🏷️ المنتجات</button>
+        <button class="btn green sm" onclick="exportCsv('orders')">📦 الطلبات</button>
+        <button class="btn green sm" onclick="exportCsv('services')">🔧 الصيانة</button>
+      </div>
+    </div>
+    <div id="backupInfo" class="ihint" style="margin-top:12px;"></div>
+  </div>
 
   <footer>© سما فون — نفس منتجات وحسابات التطبيق · <a href="mailto:a.alfeel50@gmail.com">a.alfeel50@gmail.com</a> · <a href="/privacy.html">سياسة الخصوصية</a></footer>
 </div>
@@ -273,6 +301,8 @@
   .ucard b{font-size:15px;color:var(--text);}
   .ucode{color:var(--primary);font-weight:700;cursor:pointer;font-size:13px;}
   .rolepill{font-size:12px;font-weight:700;border-radius:8px;padding:2px 9px;background:rgba(37,99,235,.12);color:var(--primary);}
+  .pwwrap{position:relative;margin-bottom:12px;}
+  .pweye{position:absolute;top:50%;transform:translateY(-50%);inset-inline-start:10px;background:none;border:none;font-size:18px;cursor:pointer;padding:4px;line-height:1;}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -300,7 +330,8 @@
   let myRole = 'customer', myName = '', myPhone = '', myPerms = {};
   // بيانات الأدوار
   let supProducts = [], supOrders = [], repAvail = [], repMine = [], admPending = [], admUsers = [], admOrders = [];
-  let centers = [], myServices = [], centerServices = [], admServices = [], admAllProducts = [];
+  let centers = [], myServices = [], centerServices = [], admServices = [], admAllProducts = [], admWorks = [];
+  let cfgCommission = { serviceCommission: { type:'percent', value:10 } };
   const SVC_STATUS = {
     pending:{t:'بانتظار الاستلام',c:'#d97706'}, received:{t:'تم الاستلام',c:'#2563eb'},
     quoted:{t:'بانتظار موافقتك',c:'#7c3aed'}, approved:{t:'قيد الإصلاح',c:'#0891b2'},
@@ -315,7 +346,7 @@
     supplier: [['sup-products','🏷️ منتجاتي'],['sup-add','➕ إضافة منتج'],['sup-orders','📦 الطلبات'],['meshkilati','🛠️ مشكلتي']],
     rep:      [['rep-available','🛵 متاح'],['rep-mine','🚚 توصيلاتي']],
     center:   [['center','🔧 طلبات الصيانة']],
-    admin:    [['adm-pending','🕵️ مراجعة'],['adm-products','🗂️ المنتجات'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['adm-services','🔧 الصيانة']],
+    admin:    [['adm-pending','🕵️ مراجعة'],['adm-products','🗂️ المنتجات'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['adm-services','🔧 الصيانة'],['adm-finance','💰 المالية'],['adm-works','🖼️ أعمالنا'],['adm-backup','💾 النسخ']],
   };
   const ROLE_AR = { customer:'عميل', supplier:'مورّد', rep:'مندوب', admin:'إدارة', center:'مركز صيانة' };
 
@@ -339,6 +370,7 @@
     document.getElementById('loginErr').textContent = '';
   }
   function submitAuth(){ registerMode ? doRegister() : doLogin(); }
+  function togglePw(){ const i=document.getElementById('password'), e=document.getElementById('pwEye'); if(i.type==='password'){ i.type='text'; e.textContent='🙈'; } else { i.type='password'; e.textContent='👁️'; } }
 
   function setMode(m){
     mode = m;
@@ -396,23 +428,32 @@
         : (e.code==='auth/unauthorized-domain' ? 'النطاق غير مُصرّح في Firebase (Authorized domains).' : ('تعذّر التسجيل: '+(e.message||e.code)));
     }
   }
+  async function ensureGoogleUser(user){
+    if(!user) return;
+    const doc = await db.collection('users').doc(user.uid).get();
+    if(!doc.exists){
+      await db.collection('users').doc(user.uid).set({ role:'customer', active:true, phone:'', name: user.displayName||'', email: user.email||'', createdAt: Date.now() });
+    }
+  }
   async function doGoogle(){
     const err = document.getElementById('loginErr'); err.textContent='';
+    const provider = new firebase.auth.GoogleAuthProvider();
     try{
-      const provider = new firebase.auth.GoogleAuthProvider();
       const res = await auth.signInWithPopup(provider);
-      const uid = res.user.uid;
-      // ننشئ سجل المستخدم إن كان جديدًا (دور عميل).
-      const doc = await db.collection('users').doc(uid).get();
-      if(!doc.exists){
-        await db.collection('users').doc(uid).set({ role:'customer', active:true, phone:'', name: res.user.displayName||'', email: res.user.email||'', createdAt: Date.now() });
-      }
+      await ensureGoogleUser(res.user);
     }catch(e){
+      // النافذة المنبثقة محجوبة/مغلقة → نحوّل عبر إعادة توجيه الصفحة (لا يحجبه المتصفح).
+      if(e.code==='auth/popup-blocked' || e.code==='auth/popup-closed-by-user' || e.code==='auth/cancelled-popup-request'){
+        err.textContent = 'جارٍ التحويل إلى Google…';
+        try{ await auth.signInWithRedirect(provider); return; }catch(e2){ err.textContent='تعذّر التحويل إلى Google: '+(e2.message||e2.code); return; }
+      }
       err.textContent = e.code==='auth/unauthorized-domain'
         ? 'أضِف نطاق الموقع في Firebase ← Authentication ← Authorized domains.'
         : (e.code==='auth/operation-not-allowed' ? 'فعّل مزوّد Google في Firebase ← Authentication ← Sign-in method.' : ('تعذّر الدخول بـGoogle: '+(e.message||e.code)));
     }
   }
+  // إتمام الدخول بعد العودة من تحويل Google (auth/popup-blocked fallback)
+  auth.getRedirectResult().then((res)=>{ if(res && res.user) ensureGoogleUser(res.user); }).catch(()=>{});
   function logout(){
     if(ordersUnsub){ ordersUnsub(); ordersUnsub=null; }
     Object.keys(subs).forEach(k=>{ try{ subs[k] && subs[k](); }catch(e){} delete subs[k]; });
@@ -467,7 +508,10 @@
     if(myRole==='supplier'){ watchSupProducts(); watchSupOrders(); fillCatSelect(); }
     if(myRole==='rep'){ watchRepAvailable(); watchRepMine(); }
     if(myRole==='center'){ watchCenterServices(); }
-    if(myRole==='admin'){ watchPending(); watchAllProducts(); watchUsers(); watchAllOrders(); watchAdmServices(); }
+    if(myRole==='admin'){
+      watchPending(); watchAllProducts(); watchUsers(); watchAllOrders(); watchAdmServices(); watchWorks();
+      try{ const cf=await db.collection('settings').doc('config').get(); const d=cf.data()||{}; if(d.serviceCommission) cfgCommission.serviceCommission=d.serviceCommission; }catch(e){}
+    }
 
     // العرض الافتراضي = أول عنصر في قائمة الدور
     showView((NAV[myRole]||NAV.customer)[0][0]);
@@ -516,6 +560,7 @@
       'rep-available': renderRepAvail, 'rep-mine': renderRepMine,
       'adm-pending': renderPending, 'adm-users': renderUsers, 'adm-orders': renderAdmOrders,
       'adm-products': renderAdmProducts,
+      'adm-finance': renderFinance, 'adm-works': renderWorks, 'adm-backup': renderBackup,
       services: renderServices, center: renderCenter, 'adm-services': renderAdmServices,
     };
     if(R[v]) R[v]();
@@ -879,6 +924,107 @@
       <span class="pstatus" style="background:${u.active!==false?'#05966922':'#dc262622'};color:${u.active!==false?'#059669':'#dc2626'}">${u.active!==false?'نشط':'موقوف'}</span>
     </div></div>`).join('');
   }
+  // ═══════════════ المالية ═══════════════
+  function commissionAmt(price, c){
+    if(!c || !(c.value>0)) return 0;
+    return c.type==='percent' ? Math.round(price*c.value/100) : c.value;
+  }
+  function renderFinance(){
+    const el=document.getElementById('admFinance'); if(!el) return;
+    const delivered=admOrders.filter(o=>o.status==='delivered');
+    let sales=0, comm=0, supShare=0; const bySup={};
+    delivered.forEach(o=>{
+      const p=o.price||0, c=commissionAmt(p,o.commission);
+      sales+=p; comm+=c; supShare+=(p-c);
+      const sid=o.supplierId||'__admin__';
+      bySup[sid]=bySup[sid]||{count:0,comm:0,share:0};
+      bySup[sid].count++; bySup[sid].comm+=c; bySup[sid].share+=(p-c);
+    });
+    // عمولة الصيانة من طلبات «تمّت» حسب نسبة الإدارة
+    const doneSvc=admServices.filter(s=>s.status==='done');
+    let svcComm=0, svcTotal=0;
+    doneSvc.forEach(s=>{ const t=(s.price||0)+(s.partsCost||0); svcTotal+=t; svcComm+=commissionAmt(s.price||0, cfgCommission.serviceCommission); });
+    const supName=(sid)=>{ if(sid==='__admin__')return 'منتجات الإدارة'; const u=admUsers.find(x=>x.id===sid); return u?(u.name||u.phone||String(sid).slice(-6)):String(sid).slice(-6).toUpperCase(); };
+    const card=(t,v,c)=>`<div class="irow"><b>${t}</b><span style="color:${c||'var(--primary)'};font-weight:800;font-size:16px;">${v.toLocaleString()} ر.ي</span></div>`;
+    el.innerHTML=`<div class="ibox">
+      ${card('إجمالي المبيعات المسلَّمة', sales, 'var(--text)')}
+      ${card('عمولة الإدارة (منتجات)', comm, '#059669')}
+      ${card('مستحقّ للموردين', supShare, '#d97706')}
+      ${card('عمولة الإدارة (صيانة)', svcComm, '#059669')}
+      ${card('إجمالي عمولة الإدارة', comm+svcComm, '#059669')}
+      <div class="irow"><b>عدد الطلبات المسلَّمة</b><span>${delivered.length}</span></div>
+      <div class="irow"><b>عدد خدمات الصيانة المكتملة</b><span>${doneSvc.length}</span></div>
+    </div>
+    <h2 class="vtitle" style="margin-top:20px;">حسب المورّد</h2>
+    <div class="ibox">${Object.keys(bySup).length? Object.entries(bySup).map(([sid,v])=>`
+      <div class="irow"><div><b>${supName(sid)}</b><div class="det">${v.count} طلب · عمولة الإدارة ${v.comm.toLocaleString()} ر.ي</div></div>
+      <span style="color:#d97706;font-weight:700;">مستحقّه ${v.share.toLocaleString()} ر.ي</span></div>`).join('') : '<div class="center">لا مبيعات مسلَّمة بعد.</div>'}</div>`;
+  }
+
+  // ═══════════════ أعمالنا (workPosts) ═══════════════
+  function watchWorks(){
+    subs.works && subs.works();
+    subs.works=db.collection('workPosts').onSnapshot(s=>{
+      admWorks=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      if(currentView==='adm-works') renderWorks();
+    },()=>{});
+  }
+  function renderWorks(){
+    const el=document.getElementById('admWorks'); if(!el) return;
+    if(!admWorks.length){ el.innerHTML='<div class="center">لا مواضيع أعمال بعد.</div>'; return; }
+    el.innerHTML=admWorks.map(w=>{
+      const appr=w.status==='approved';
+      const imgs=(w.imageUris&&w.imageUris.length)?w.imageUris:(w.imageUri?[w.imageUri]:[]);
+      return `<div class="ocard">
+        <div class="orow"><b>${w.titleAr||'موضوع'}</b><span class="obadge" style="background:${appr?'#05966922':'#d9770622'};color:${appr?'#059669':'#d97706'}">${appr?'معتمد':'بانتظار الاعتماد'}</span></div>
+        ${w.descriptionAr?`<div class="ometa">${w.descriptionAr}</div>`:''}
+        ${imgs.length?`<div class="thumbs" style="margin-top:8px;">${imgs.slice(0,4).map(u=>`<div class="th"><img src="${u}"></div>`).join('')}</div>`:''}
+        ${w.ownerPhone?`<div class="ometa">📞 ${w.ownerPhone}</div>`:''}
+        <div class="row-actions">
+          ${!appr?`<button class="btn green sm" onclick="approveWork('${w.id}')">✅ اعتماد</button>`:''}
+          <button class="btn red sm" onclick="deleteWork('${w.id}','${(w.titleAr||'').replace(/'/g,'')}')">🗑️ حذف</button>
+        </div></div>`;
+    }).join('');
+  }
+  async function approveWork(id){
+    try{ await db.collection('workPosts').doc(id).update({status:'approved'}); toast('تم الاعتماد ✅'); }
+    catch(e){ toast('تعذّر الاعتماد: '+(e.code||e.message||'')); }
+  }
+  async function deleteWork(id, title){
+    if(!confirm('حذف «'+(title||'')+'» نهائيًا؟')) return;
+    try{ await db.collection('workPosts').doc(id).delete(); toast('تم الحذف ✅'); }
+    catch(e){ toast('تعذّر الحذف: '+(e.code||e.message||'')); }
+  }
+
+  // ═══════════════ النسخ والتصدير ═══════════════
+  function renderBackup(){
+    const el=document.getElementById('backupInfo'); if(!el) return;
+    el.innerHTML=`المتوفّر: ${admUsers.length} مستخدم · ${admAllProducts.length} منتج · ${admOrders.length} طلب · ${admServices.length} صيانة · ${admWorks.length} عمل.`;
+  }
+  function download(name, content, type){
+    const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  function backupAll(){
+    const data={ exportedAt:new Date().toISOString(), users:admUsers, products:admAllProducts, orders:admOrders, services:admServices, works:admWorks };
+    download('samaphone-backup.json', JSON.stringify(data,null,2), 'application/json');
+    toast('تم تنزيل النسخة الكاملة ✅');
+  }
+  function toCsv(rows){
+    const esc=(v)=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+    return '﻿'+rows.map(r=>r.map(esc).join(',')).join('\r\n');
+  }
+  function exportCsv(kind){
+    let rows=[];
+    if(kind==='users'){ rows=[['الاسم','الرقم','البريد','الدور','الرمز','الحالة'], ...admUsers.map(u=>[u.name||'',u.phone||'',u.email||'',(ROLE_AR[u.role]||u.role||'عميل'),String(u.id).slice(-6).toUpperCase(),u.active!==false?'نشط':'موقوف'])]; }
+    else if(kind==='products'){ rows=[['المنتج','السعر','الحالة','المورد'], ...admAllProducts.map(p=>[p.nameAr||'',p.price||0,(PSTAT[p.status]?PSTAT[p.status].t:p.status),p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'])]; }
+    else if(kind==='orders'){ rows=[['المنتج','السعر','الشحن','الحالة','الهاتف','التاريخ'], ...admOrders.map(o=>[o.productName||'',o.price||0,o.deliveryFee||0,(ORDER_STATUS[o.status]?ORDER_STATUS[o.status].t:o.status),o.phone||'',fmtDate(o.createdAt)])]; }
+    else if(kind==='services'){ rows=[['المركز','العطل','التكلفة','الحالة','الهاتف','التاريخ'], ...admServices.map(s=>[s.centerName||'',s.problem||'',(s.price||0)+(s.partsCost||0),(SVC_STATUS[s.status]?SVC_STATUS[s.status].t:s.status),s.customerPhone||'',fmtDate(s.createdAt)])]; }
+    if(rows.length<=1){ toast('لا بيانات للتصدير'); return; }
+    download(`samaphone-${kind}.csv`, toCsv(rows), 'text/csv;charset=utf-8;');
+    toast('تم التصدير ✅');
+  }
+
   // تصدير المستخدمين إلى Excel (CSV بترميز UTF-8 مع BOM ليعرض العربية صحيحة)
   function exportUsersExcel(){
     if(!admUsers.length){ toast('لا مستخدمين للتصدير'); return; }
