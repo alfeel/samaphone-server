@@ -494,6 +494,11 @@
     try{
       const u = await db.collection('users').doc(auth.currentUser.uid).get();
       const d = u.data()||{};
+      // فرض الحظر: حساب موقوف أو محذوف من الإدارة لا يُسمح بدخوله.
+      if(d.active===false || d.deleted===true){
+        alert('أوقفت الإدارة هذا الحساب أو حذفته. تواصل معنا لأي استفسار.');
+        logout(); return;
+      }
       myRole = d.role || 'customer';
       myName = d.name || ''; myPhone = d.phone || '';
       myPerms = d.permissions || {};
