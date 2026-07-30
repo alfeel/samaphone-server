@@ -220,6 +220,10 @@
     <p class="ihint">مواضيع المراكز — اعتمدها لتظهر للجميع، أو احذفها.</p>
     <div id="admWorks"></div>
   </div>
+  <div id="view-adm-settings" class="view wrap hidden">
+    <h2 class="vtitle">⚙️ الإعدادات</h2>
+    <div id="admSettings"></div>
+  </div>
   <div id="view-adm-backup" class="view wrap hidden">
     <h2 class="vtitle">💾 النسخ الاحتياطي والتصدير</h2>
     <p class="ihint">نزّل نسخة كاملة من البيانات (JSON) أو صدّر أي قسم إلى Excel.</p>
@@ -346,7 +350,7 @@
     supplier: [['sup-products','🏷️ منتجاتي'],['sup-add','➕ إضافة منتج'],['sup-orders','📦 الطلبات'],['meshkilati','🛠️ مشكلتي']],
     rep:      [['rep-available','🛵 متاح'],['rep-mine','🚚 توصيلاتي']],
     center:   [['center','🔧 طلبات الصيانة']],
-    admin:    [['adm-pending','🕵️ مراجعة'],['adm-products','🗂️ المنتجات'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['adm-services','🔧 الصيانة'],['adm-finance','💰 المالية'],['adm-works','🖼️ أعمالنا'],['adm-backup','💾 النسخ']],
+    admin:    [['adm-pending','🕵️ مراجعة'],['adm-products','🗂️ المنتجات'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['adm-services','🔧 الصيانة'],['adm-finance','💰 المالية'],['adm-works','🖼️ أعمالنا'],['adm-settings','⚙️ الإعدادات'],['adm-backup','💾 النسخ']],
   };
   const ROLE_AR = { customer:'عميل', supplier:'مورّد', rep:'مندوب', admin:'إدارة', center:'مركز صيانة' };
 
@@ -565,7 +569,7 @@
       'rep-available': renderRepAvail, 'rep-mine': renderRepMine,
       'adm-pending': renderPending, 'adm-users': renderUsers, 'adm-orders': renderAdmOrders,
       'adm-products': renderAdmProducts,
-      'adm-finance': renderFinance, 'adm-works': renderWorks, 'adm-backup': renderBackup,
+      'adm-finance': renderFinance, 'adm-works': renderWorks, 'adm-backup': renderBackup, 'adm-settings': renderSettings,
       services: renderServices, center: renderCenter, 'adm-services': renderAdmServices,
     };
     if(R[v]) R[v]();
@@ -928,8 +932,26 @@
       <div class="ucode" onclick="copyTxt('${String(u.id).slice(-6).toUpperCase()}')">🔑 الرمز: ${String(u.id).slice(-6).toUpperCase()}</div></div>
       <span class="pstatus" style="background:${u.active!==false?'#05966922':'#dc262622'};color:${u.active!==false?'#059669':'#dc2626'}">${u.active!==false?'نشط':'موقوف'}</span>
     </div>
-      <div class="row-actions"><button class="btn ${u.verified?'ghost':'green'} sm" onclick="admToggleVerify('${u.id}',${!!u.verified})">${u.verified?'إلغاء التوثيق':'✅ توثيق الحساب'}</button></div>
+      <div class="row-actions">
+        <button class="btn ${u.verified?'ghost':'green'} sm" onclick="admToggleVerify('${u.id}',${!!u.verified})">${u.verified?'إلغاء التوثيق':'✅ توثيق'}</button>
+        <button class="btn sm" onclick="admResetPassword('${u.id}','${String(u.name||u.phone||'').replace(/'/g,'')}')">🔑 استعادة كلمة السر</button>
+      </div>
     </div>`).join('');
+  }
+  async function admResetPassword(uid, name){
+    if(!confirm('إرسال رابط استعادة كلمة المرور لحساب «'+(name||'')+'»؟')) return;
+    try{
+      const idToken=await auth.currentUser.getIdToken();
+      const r=await fetch('/api/admin/reset-password',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({idToken, targetUid:uid})});
+      const d=await r.json();
+      if(!r.ok){ toast(d.message||'تعذّر إرسال الرابط'); return; }
+      if(d.channel==='email'){ toast('أُرسل رابط الاستعادة إلى '+d.to+' ✅'); }
+      else {
+        const msg=encodeURIComponent('رابط استعادة كلمة مرور حسابك في سما فون:\n'+d.link);
+        if(d.phone){ window.open('https://wa.me/967'+String(d.phone).replace(/^0+/,'')+'?text='+msg,'_blank'); toast('افتح واتساب لإرسال الرابط للعميل'); }
+        else { prompt('انسخ الرابط وأرسله للعميل:', d.link); }
+      }
+    }catch(e){ toast('تعذّر: '+(e.message||'')); }
   }
   async function admToggleVerify(id, cur){
     try{ await db.collection('users').doc(id).update({ verified: !cur, verifiedAt: Date.now() }); toast(!cur?'تم توثيق الحساب ✅':'أُلغي التوثيق'); }
@@ -1006,6 +1028,94 @@
     try{ await db.collection('workPosts').doc(id).delete(); toast('تم الحذف ✅'); }
     catch(e){ toast('تعذّر الحذف: '+(e.code||e.message||'')); }
   }
+
+  // ═══════════════ الإعدادات (الإدارة) ═══════════════
+  let setCfg={}, setShip=[], setPay=[], setCats=[];
+  async function renderSettings(){
+    const el=document.getElementById('admSettings'); if(!el) return;
+    el.innerHTML='<div class="center">جارٍ التحميل…</div>';
+    try{
+      const [cfg,sh,pm,ct]=await Promise.all([
+        db.collection('settings').doc('config').get(),
+        db.collection('settings').doc('shipping').get(),
+        db.collection('settings').doc('payments').get(),
+        db.collection('settings').doc('categories').get(),
+      ]);
+      setCfg=cfg.data()||{}; setShip=(sh.data()?.items)||[]; setPay=(pm.data()?.items)||[]; setCats=(ct.data()?.items)||[];
+    }catch(e){ el.innerHTML='<div class="center">تعذّر تحميل الإعدادات</div>'; return; }
+    drawSettings();
+  }
+  function commRow(pre, c){
+    return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <select id="${pre}Type" class="field" style="width:auto;margin:0;"><option value="percent"${c.type==='percent'?' selected':''}>نسبة %</option><option value="fixed"${c.type==='fixed'?' selected':''}>مبلغ ثابت</option></select>
+      <input id="${pre}Val" class="field" style="width:120px;margin:0;" type="number" value="${c.value||0}"></div>`;
+  }
+  function drawSettings(){
+    const el=document.getElementById('admSettings');
+    const dc=setCfg.defaultCommission||{type:'percent',value:10}, sc=setCfg.serviceCommission||{type:'percent',value:10};
+    el.innerHTML=`
+      <div class="ibox">
+        <div class="irow" style="flex-direction:column;align-items:stretch;gap:10px;">
+          <b>💰 العمولة — تحدّدها الإدارة فقط</b>
+          <div class="det">عمولة المنتجات الافتراضية:</div>${commRow('dc',dc)}
+          <div class="det" style="margin-top:8px;">عمولة الصيانة:</div>${commRow('sc',sc)}
+          <button class="btn sm" style="margin-top:8px;" onclick="saveCommission()">💾 حفظ العمولة</button>
+        </div>
+      </div>
+      <h2 class="vtitle" style="margin-top:20px;">🚚 خيارات الشحن</h2>
+      <div id="shipEdit" class="ibox"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;max-width:1100px;margin-inline:auto;"><button class="btn ghost sm" onclick="addShip()">+ خيار شحن</button><button class="btn green sm" onclick="saveShip()">💾 حفظ الشحن</button></div>
+      <h2 class="vtitle" style="margin-top:20px;">💳 طرق الدفع</h2>
+      <div id="payEdit" class="ibox"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;max-width:1100px;margin-inline:auto;"><button class="btn ghost sm" onclick="addPay()">+ طريقة دفع</button><button class="btn green sm" onclick="savePay()">💾 حفظ الدفع</button></div>
+      <h2 class="vtitle" style="margin-top:20px;">🗂️ الأقسام</h2>
+      <div id="catEdit" class="ibox"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;max-width:1100px;margin-inline:auto;"><button class="btn ghost sm" onclick="addCat()">+ قسم</button><button class="btn green sm" onclick="saveCats()">💾 حفظ الأقسام</button></div>`;
+    drawShip(); drawPay(); drawCats();
+  }
+  const inp=(v,ph,oi)=>`<input class="field" style="margin:0;" placeholder="${ph}" value="${(v==null?'':String(v)).replace(/"/g,'&quot;')}" oninput="${oi}">`;
+  function drawShip(){
+    document.getElementById('shipEdit').innerHTML=setShip.map((s,i)=>`<div class="irow" style="flex-direction:column;align-items:stretch;gap:6px;">
+      ${inp(s.labelAr,'اسم الخيار',`setShip[${i}].labelAr=this.value`)}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <select class="field" style="width:auto;margin:0;" onchange="setShip[${i}].ruleType=this.value"><option value="paid"${s.ruleType==='paid'?' selected':''}>مدفوع</option><option value="free"${s.ruleType==='free'?' selected':''}>مجاني</option><option value="threshold"${s.ruleType==='threshold'?' selected':''}>مجاني فوق حدّ</option></select>
+        <input class="field" style="width:110px;margin:0;" type="number" placeholder="الرسم" value="${s.fee||0}" oninput="setShip[${i}].fee=+this.value">
+        <input class="field" style="width:130px;margin:0;" type="number" placeholder="حدّ المجانية" value="${s.freeThreshold||0}" oninput="setShip[${i}].freeThreshold=+this.value">
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;"><label><input type="checkbox" ${s.enabled!==false?'checked':''} onchange="setShip[${i}].enabled=this.checked"> مفعّل</label>
+      <label><input type="radio" name="shipDef" ${s.isDefault?'checked':''} onchange="setShip.forEach((x,j)=>x.isDefault=(j===${i}))"> افتراضي</label>
+      <button class="linkbtn" style="color:#dc2626;" onclick="setShip.splice(${i},1);drawShip()">حذف</button></div>
+    </div>`).join('')||'<div class="det">لا خيارات — أضِف واحدًا.</div>';
+  }
+  function drawPay(){
+    document.getElementById('payEdit').innerHTML=setPay.map((p,i)=>`<div class="irow" style="flex-direction:column;align-items:stretch;gap:6px;">
+      ${inp(p.labelAr,'اسم الطريقة',`setPay[${i}].labelAr=this.value`)}
+      ${inp(p.accountNumber,'رقم الحساب',`setPay[${i}].accountNumber=this.value`)}
+      ${inp(p.accountName,'اسم صاحب الحساب',`setPay[${i}].accountName=this.value`)}
+      ${inp(p.detailsAr,'تفاصيل',`setPay[${i}].detailsAr=this.value`)}
+      <div style="display:flex;gap:12px;align-items:center;"><label><input type="checkbox" ${p.enabled!==false?'checked':''} onchange="setPay[${i}].enabled=this.checked"> مفعّل</label>
+      <label><input type="radio" name="payDef" ${p.isDefault?'checked':''} onchange="setPay.forEach((x,j)=>x.isDefault=(j===${i}))"> افتراضي</label>
+      <button class="linkbtn" style="color:#dc2626;" onclick="setPay.splice(${i},1);drawPay()">حذف</button></div>
+    </div>`).join('')||'<div class="det">لا طرق — أضِف واحدة.</div>';
+  }
+  function drawCats(){
+    document.getElementById('catEdit').innerHTML=setCats.map((c,i)=>`<div class="irow" style="gap:8px;">
+      ${inp(c.nameAr,'اسم القسم',`setCats[${i}].nameAr=this.value`)}
+      <button class="linkbtn" style="color:#dc2626;" onclick="setCats.splice(${i},1);drawCats()">حذف</button></div>`).join('')||'<div class="det">لا أقسام.</div>';
+  }
+  function gid(){ return 'c'+Math.random().toString(36).slice(2,8); }
+  function addShip(){ setShip.push({id:gid(),labelAr:'خيار جديد',ruleType:'paid',fee:500,freeThreshold:0,enabled:true,isDefault:setShip.length===0}); drawShip(); }
+  function addPay(){ setPay.push({id:gid(),labelAr:'طريقة جديدة',accountNumber:'',accountName:'',detailsAr:'',enabled:true,isDefault:setPay.length===0}); drawPay(); }
+  function addCat(){ setCats.push({id:gid(),nameAr:'قسم جديد'}); drawCats(); }
+  async function saveCommission(){
+    const dc={type:document.getElementById('dcType').value,value:+document.getElementById('dcVal').value||0};
+    const sc={type:document.getElementById('scType').value,value:+document.getElementById('scVal').value||0};
+    try{ await db.collection('settings').doc('config').set({defaultCommission:dc,serviceCommission:sc,updatedAt:Date.now()},{merge:true}); toast('حُفظت العمولة ✅'); }
+    catch(e){ toast('تعذّر: '+(e.code||e.message||'')); }
+  }
+  async function saveShip(){ try{ await db.collection('settings').doc('shipping').set({items:setShip,updatedAt:Date.now()},{merge:true}); toast('حُفظ الشحن ✅'); }catch(e){ toast('تعذّر: '+(e.code||e.message||'')); } }
+  async function savePay(){ try{ await db.collection('settings').doc('payments').set({items:setPay,updatedAt:Date.now()},{merge:true}); toast('حُفظت طرق الدفع ✅'); }catch(e){ toast('تعذّر: '+(e.code||e.message||'')); } }
+  async function saveCats(){ try{ await db.collection('settings').doc('categories').set({items:setCats,updatedAt:Date.now()},{merge:true}); toast('حُفظت الأقسام ✅'); }catch(e){ toast('تعذّر: '+(e.code||e.message||'')); } }
 
   // ═══════════════ النسخ والتصدير ═══════════════
   function renderBackup(){
