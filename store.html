@@ -918,11 +918,17 @@
     if(q) list=list.filter(u=>(u.name||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||(u.id||'').toLowerCase().includes(q));
     if(!list.length){ el.innerHTML='<div class="center">لا مستخدمين مطابقين.</div>'; return; }
     el.innerHTML=list.map(u=>`<div class="ucard"><div class="urow">
-      <div><b>${u.name||'—'}</b> <span class="rolepill">${ROLE_AR[u.role]||u.role||'عميل'}</span>
+      <div><b>${u.name||'—'}</b> <span class="rolepill">${ROLE_AR[u.role]||u.role||'عميل'}</span>${u.verified?' <span class="rolepill" style="background:#05966922;color:#059669;">✅ موثّق</span>':''}
       <div class="pm" style="color:var(--muted);font-size:13px;margin-top:3px;">${u.phone?'📞 '+u.phone:''}${u.email?' · '+u.email:''}</div>
       <div class="ucode" onclick="copyTxt('${String(u.id).slice(-6).toUpperCase()}')">🔑 الرمز: ${String(u.id).slice(-6).toUpperCase()}</div></div>
       <span class="pstatus" style="background:${u.active!==false?'#05966922':'#dc262622'};color:${u.active!==false?'#059669':'#dc2626'}">${u.active!==false?'نشط':'موقوف'}</span>
-    </div></div>`).join('');
+    </div>
+      <div class="row-actions"><button class="btn ${u.verified?'ghost':'green'} sm" onclick="admToggleVerify('${u.id}',${!!u.verified})">${u.verified?'إلغاء التوثيق':'✅ توثيق الحساب'}</button></div>
+    </div>`).join('');
+  }
+  async function admToggleVerify(id, cur){
+    try{ await db.collection('users').doc(id).update({ verified: !cur, verifiedAt: Date.now() }); toast(!cur?'تم توثيق الحساب ✅':'أُلغي التوثيق'); }
+    catch(e){ toast('تعذّر: '+(e.code||e.message||'')); }
   }
   // ═══════════════ المالية ═══════════════
   function commissionAmt(price, c){
