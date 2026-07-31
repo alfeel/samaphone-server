@@ -581,6 +581,8 @@
     if(R[v]) R[v]();
   }
 
+  // تهريب HTML لكل نص يتحكّم به المستخدم قبل إدراجه في innerHTML (منع XSS).
+  function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function fmtDate(ts){
     if(!ts) return '';
     try{ return new Date(ts).toLocaleString('ar', {dateStyle:'medium', timeStyle:'short'}); }
@@ -595,7 +597,7 @@
       const fee = o.deliveryFee ? ` + شحن ${(o.deliveryFee).toLocaleString()}` : '';
       const total = ((o.price||0)+(o.deliveryFee||0)).toLocaleString();
       return `<div class="ocard">
-        <div class="orow"><b>${o.productName||'منتج'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="orow"><b>${esc(o.productName||'منتج')}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
         <div class="ometa">💵 ${(o.price||0).toLocaleString()}${fee} = <b>${total} ر.ي</b>${o.orderNo?` · طلب #${o.orderNo}`:''}</div>
         ${o.shippingLabel?`<div class="ometa">🚚 ${o.shippingLabel}</div>`:''}
         ${o.paymentMethod?`<div class="ometa">💳 ${payLabel(o.paymentMethod)}</div>`:''}
@@ -605,7 +607,8 @@
   }
   function payLabel(m){
     const f = payments.find(p=>p.id===m); if(f) return f.labelAr;
-    return m==='cash-on-delivery' ? 'الدفع عند الاستلام' : m;
+    const map={ cod:'الدفع عند الاستلام', 'cash-on-delivery':'الدفع عند الاستلام', wallet:'محفظة/تحويل', transfer:'تحويل' };
+    return map[m] || m;
   }
 
   function shipDesc(s){
@@ -663,7 +666,7 @@
     const payChips = payments.length ? payments.map(m=>`<button class="chip ${selPay&&selPay.id===m.id?'sel':''}" onclick="pickPay('${m.id}')">${m.labelAr}</button>`).join('') : '<span class="det">لا طرق دفع</span>';
     const payHint = selPay && selPay.accountNumber ? `<div class="det" style="margin-top:8px;">حوّل إلى <b class="acct" onclick="copyTxt('${selPay.accountNumber}')">📋 ${selPay.accountNumber}</b>${selPay.accountName?` — ${selPay.accountName}`:''}</div>` : '';
     document.getElementById('sheet').innerHTML = `
-      <h3>${p.nameAr||'منتج'}</h3>
+      <h3>${esc(p.nameAr||'منتج')}</h3>
       <div class="sh-sub">${p.inStock===false?'⚠️ غير متوفر حاليًا':'✅ متوفر'} · رمز المورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'الإدارة'}</div>
       <div class="lbl">🚚 اختر الشحن</div>
       <div class="opt">${shipChips}</div>
@@ -712,12 +715,12 @@
   }
   function detailMsg(){
     const p = detailP; const sub=p.price||0, fee=shipFee(selShip,sub), total=sub+fee;
-    let m = `مرحباً، أريد الطلب:\n📦 ${p.nameAr}\n💵 السعر: ${sub.toLocaleString()} ر.ي`;
+    let m = `مرحباً، أريد الطلب:\n📦 ${esc(p.nameAr)}\n💵 السعر: ${sub.toLocaleString()} ر.ي`;
     if(selShip) m += `\n🚚 الشحن: ${selShip.labelAr} (${fee>0?fee.toLocaleString()+' ر.ي':'مجاني'})`;
     m += `\n🧾 الإجمالي: ${total.toLocaleString()} ر.ي`;
     if(selPay) m += `\n💳 الدفع: ${selPay.labelAr}${selPay.accountNumber?' — '+selPay.accountNumber:''}`;
     m += `\n🏪 رمز المورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'الإدارة'}`;
-    if(p.specs) m += `\n📋 ${p.specs}`;
+    if(p.specs) m += `\n📋 ${esc(p.specs)}`;
     return encodeURIComponent(m);
   }
 
@@ -784,7 +787,7 @@
       const st=PSTAT[p.status]||{t:p.status,c:'#888'};
       return `<div class="pcard">
         <div class="pimg">${p.imageUri?`<img src="${p.imageUri}" class="pimg">`:'📷'}</div>
-        <div class="pinfo"><b>${p.nameAr||''}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي</div>
+        <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي</div>
         ${p.status==='rejected'&&p.rejectionReason?`<div class="pm" style="color:#dc2626">سبب: ${p.rejectionReason}</div>`:''}</div>
         <span class="pstatus" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>`;
     }).join('');
@@ -825,7 +828,7 @@
   function orderCardHTML(o, showPhone){
     const st=ORDER_STATUS[o.status]||{t:o.status,c:'#888'};
     return `<div class="ocard">
-      <div class="orow"><b>${o.productName||'منتج'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+      <div class="orow"><b>${esc(o.productName||'منتج')}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
       <div class="ometa">💵 ${(o.price||0).toLocaleString()} ر.ي${o.orderNo?` · #${o.orderNo}`:''}</div>
       ${showPhone&&o.phone?`<div class="ometa">📞 ${o.phone}</div>`:''}
       ${o.repName?`<div class="ometa">🛵 المندوب: ${o.repName}</div>`:''}
@@ -844,7 +847,7 @@
     const el=document.getElementById('repAvail'); if(!el) return;
     if(!repAvail.length){ el.innerHTML='<div class="center">لا طلبات متاحة حاليًا.</div>'; return; }
     el.innerHTML=repAvail.map(o=>`<div class="ocard">
-      <div class="orow"><b>${o.productName||'منتج'}</b><span class="obadge" style="background:#7c3aed22;color:#7c3aed">جاهز</span></div>
+      <div class="orow"><b>${esc(o.productName||'منتج')}</b><span class="obadge" style="background:#7c3aed22;color:#7c3aed">جاهز</span></div>
       <div class="ometa">💵 ${(o.price||0).toLocaleString()} ر.ي${o.shippingLabel?` · 🚚 ${o.shippingLabel}`:''}</div>
       ${o.shippingAddress?`<div class="ometa">📍 ${o.shippingAddress.governorate||''} ${o.shippingAddress.district||''} ${o.shippingAddress.area||''}</div>`:''}
       <div class="row-actions"><button class="btn green sm" onclick="repTake('${o.id}')">استلام الطلب</button></div></div>`).join('');
@@ -873,7 +876,7 @@
       if(o.status==='assigned') action=`<button class="btn amber sm" onclick="repAdvance('${o.id}','picked_up','كود الاستلام من المورد')">📥 استلمت من المورد</button>`;
       else if(o.status==='picked_up') action=`<button class="btn green sm" onclick="repAdvance('${o.id}','delivered','كود التسليم من العميل')">✅ سلّمت للعميل</button>`;
       return `<div class="ocard">
-        <div class="orow"><b>${o.productName||'منتج'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="orow"><b>${esc(o.productName||'منتج')}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
         <div class="ometa">💵 ${(o.price||0).toLocaleString()} ر.ي${o.phone?` · 📞 ${o.phone}`:''}</div>
         ${o.shippingAddress?`<div class="ometa">📍 ${o.shippingAddress.governorate||''} ${o.shippingAddress.district||''} ${o.shippingAddress.area||''}</div>`:''}
         <div class="row-actions">${action}</div></div>`;
@@ -904,8 +907,8 @@
     if(!admPending.length){ el.innerHTML='<div class="center">لا منتجات بانتظار المراجعة ✅</div>'; return; }
     el.innerHTML=admPending.map(p=>`<div class="pcard" style="flex-wrap:wrap;">
       <div class="pimg">${p.imageUri?`<img src="${p.imageUri}" class="pimg">`:'📷'}</div>
-      <div class="pinfo"><b>${p.nameAr||''}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div>
-      ${p.descriptionAr?`<div class="pm">${p.descriptionAr}</div>`:''}</div>
+      <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div>
+      ${p.descriptionAr?`<div class="pm">${esc(p.descriptionAr)}</div>`:''}</div>
       <div class="row-actions" style="width:100%;"><button class="btn green sm" onclick="admApprove('${p.id}')">✅ موافقة</button>
       <button class="btn red sm" onclick="admReject('${p.id}')">✕ رفض</button></div></div>`).join('');
   }
@@ -933,14 +936,14 @@
     if(q) list=list.filter(u=>(u.name||'').toLowerCase().includes(q)||(u.phone||'').includes(q)||(u.id||'').toLowerCase().includes(q));
     if(!list.length){ el.innerHTML='<div class="center">لا مستخدمين مطابقين.</div>'; return; }
     el.innerHTML=list.map(u=>`<div class="ucard"><div class="urow">
-      <div><b>${u.name||'—'}</b> <span class="rolepill">${ROLE_AR[u.role]||u.role||'عميل'}</span>${u.verified?' <span class="rolepill" style="background:#05966922;color:#059669;">✅ موثّق</span>':''}
-      <div class="pm" style="color:var(--muted);font-size:13px;margin-top:3px;">${u.phone?'📞 '+u.phone:''}${u.email?' · '+u.email:''}</div>
+      <div><b>${esc(u.name||'—')}</b> <span class="rolepill">${ROLE_AR[u.role]||u.role||'عميل'}</span>${u.verified?' <span class="rolepill" style="background:#05966922;color:#059669;">✅ موثّق</span>':''}
+      <div class="pm" style="color:var(--muted);font-size:13px;margin-top:3px;">${u.phone?'📞 '+u.phone:''}${esc(u.email?' · '+u.email:'')}</div>
       <div class="ucode" onclick="copyTxt('${String(u.id).slice(-6).toUpperCase()}')">🔑 الرمز: ${String(u.id).slice(-6).toUpperCase()}</div></div>
       <span class="pstatus" style="background:${u.active!==false?'#05966922':'#dc262622'};color:${u.active!==false?'#059669':'#dc2626'}">${u.active!==false?'نشط':'موقوف'}</span>
     </div>
       <div class="row-actions">
         <button class="btn ${u.verified?'ghost':'green'} sm" onclick="admToggleVerify('${u.id}',${!!u.verified})">${u.verified?'إلغاء التوثيق':'✅ توثيق'}</button>
-        <button class="btn sm" onclick="admResetPassword('${u.id}','${String(u.name||u.phone||'').replace(/'/g,'')}')">🔑 استعادة كلمة السر</button>
+        <button class="btn sm" onclick="admResetPassword('${u.id}','${esc(String(u.name||u.phone||'').replace(/'/g,''))}')">🔑 استعادة كلمة السر</button>
       </div>
     </div>`).join('');
   }
@@ -1015,13 +1018,13 @@
       const appr=w.status==='approved';
       const imgs=(w.imageUris&&w.imageUris.length)?w.imageUris:(w.imageUri?[w.imageUri]:[]);
       return `<div class="ocard">
-        <div class="orow"><b>${w.titleAr||'موضوع'}</b><span class="obadge" style="background:${appr?'#05966922':'#d9770622'};color:${appr?'#059669':'#d97706'}">${appr?'معتمد':'بانتظار الاعتماد'}</span></div>
-        ${w.descriptionAr?`<div class="ometa">${w.descriptionAr}</div>`:''}
+        <div class="orow"><b>${esc(w.titleAr||'موضوع')}</b><span class="obadge" style="background:${appr?'#05966922':'#d9770622'};color:${appr?'#059669':'#d97706'}">${appr?'معتمد':'بانتظار الاعتماد'}</span></div>
+        ${w.descriptionAr?`<div class="ometa">${esc(w.descriptionAr)}</div>`:''}
         ${imgs.length?`<div class="thumbs" style="margin-top:8px;">${imgs.slice(0,4).map(u=>`<div class="th"><img src="${u}"></div>`).join('')}</div>`:''}
         ${w.ownerPhone?`<div class="ometa">📞 ${w.ownerPhone}</div>`:''}
         <div class="row-actions">
           ${!appr?`<button class="btn green sm" onclick="approveWork('${w.id}')">✅ اعتماد</button>`:''}
-          <button class="btn red sm" onclick="deleteWork('${w.id}','${(w.titleAr||'').replace(/'/g,'')}')">🗑️ حذف</button>
+          <button class="btn red sm" onclick="deleteWork('${w.id}','${esc((w.titleAr||'').replace(/'/g,''))}')">🗑️ حذف</button>
         </div></div>`;
     }).join('');
   }
@@ -1054,8 +1057,8 @@
         ? `${rd.businessName?`🏪 ${rd.businessName}`:''}${rd.serviceType?` · ${({maintenance:'صيانة',programming:'برمجة',both:'صيانة وبرمجة'}[rd.serviceType]||rd.serviceType)}`:''}${rd.address?` · 📍 ${rd.address}`:''}`
         : `${rd.residence?`🏠 ${rd.residence}`:''}`;
       return `<div class="ocard">
-        <div class="orow"><b>${u.name||'—'}</b><span class="obadge" style="background:#7c3aed22;color:#7c3aed">${ROLE_AR[u.requestedRole]||u.requestedRole}</span></div>
-        <div class="ometa">📞 ${u.phone||'—'}${u.email?` · ${u.email}`:''}</div>
+        <div class="orow"><b>${esc(u.name||'—')}</b><span class="obadge" style="background:#7c3aed22;color:#7c3aed">${ROLE_AR[u.requestedRole]||u.requestedRole}</span></div>
+        <div class="ometa">📞 ${u.phone||'—'}${u.email?` · ${esc(u.email)}`:''}</div>
         ${extra?`<div class="ometa">${extra}</div>`:''}
         ${u.requestNote?`<div class="ometa">📝 ${u.requestNote}</div>`:''}
         ${u.requestRejectedReason?`<div class="ometa" style="color:#dc2626">مرفوض سابقًا: ${u.requestRejectedReason}</div>`:''}
@@ -1301,9 +1304,9 @@
       const st=PSTAT[p.status]||{t:p.status,c:'#888'};
       return `<div class="pcard" style="flex-wrap:wrap;">
         <div class="pimg">${p.imageUri?`<img src="${p.imageUri}" class="pimg">`:'📷'}</div>
-        <div class="pinfo"><b>${p.nameAr||''}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div></div>
+        <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div></div>
         <span class="pstatus" style="background:${st.c}22;color:${st.c}">${st.t}</span>
-        <div class="row-actions" style="width:100%;"><button class="btn red sm" onclick="admDeleteProduct('${p.id}','${(p.nameAr||'').replace(/'/g,'')}')">🗑️ حذف المنتج</button></div>
+        <div class="row-actions" style="width:100%;"><button class="btn red sm" onclick="admDeleteProduct('${p.id}','${esc((p.nameAr||'').replace(/'/g,''))}')">🗑️ حذف المنتج</button></div>
       </div>`;
     }).join('');
   }
@@ -1324,7 +1327,7 @@
   function fillCenterSelect(){
     const el=document.getElementById('svcCenter'); if(!el) return;
     el.innerHTML = centers.length
-      ? '<option value="">— اختر مركز الصيانة —</option>'+centers.map(c=>`<option value="${c.id}">${c.businessName||c.ownerName||'مركز'}${c.address?' — '+c.address:''}</option>`).join('')
+      ? '<option value="">— اختر مركز الصيانة —</option>'+centers.map(c=>`<option value="${c.id}">${esc(c.businessName||c.ownerName||'مركز')}${esc(c.address?' — '+c.address:'')}</option>`).join('')
       : '<option value="">لا مراكز متاحة حاليًا</option>';
   }
   function watchMyServices(){
@@ -1366,8 +1369,8 @@
       else if(o.status==='approved') extra=`<div class="ometa">🔧 قيد الإصلاح…</div>`;
       const canCancel = o.status==='pending';
       return `<div class="ocard">
-        <div class="orow"><b>${o.centerName||'مركز صيانة'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
-        <div class="ometa">🛠️ ${o.problem||''}</div>
+        <div class="orow"><b>${esc(o.centerName||'مركز صيانة')}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="ometa">🛠️ ${esc(o.problem||'')}</div>
         ${extra}
         <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div>
         ${canCancel?`<div class="row-actions"><button class="btn ghost sm" onclick="cancelService('${o.id}')">إلغاء الطلب</button></div>`:''}
@@ -1406,7 +1409,7 @@
       else if(o.status==='approved' && o.ready) act=`<button class="btn green sm" onclick="cenComplete('${o.id}')">✅ تسليم للعميل (كود)</button>`;
       const total=(o.price||0)+(o.partsCost||0);
       return `<div class="ocard">
-        <div class="orow"><b>${o.problem||'عطل'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="orow"><b>${esc(o.problem||'عطل')}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
         <div class="ometa">📞 ${o.customerPhone||'—'}${total?` · 💰 ${total.toLocaleString()} ر.ي`:''}</div>
         <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div>
         <div class="row-actions">${act}</div></div>`;
@@ -1453,8 +1456,8 @@
       const total=(o.price||0)+(o.partsCost||0);
       const active=o.status!=='done'&&o.status!=='cancelled';
       return `<div class="ocard">
-        <div class="orow"><b>${o.centerName||'مركز'}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
-        <div class="ometa">🛠️ ${o.problem||''} · 📞 ${o.customerPhone||'—'}${total?` · 💰 ${total.toLocaleString()} ر.ي`:''}</div>
+        <div class="orow"><b>${esc(o.centerName||'مركز')}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
+        <div class="ometa">🛠️ ${esc(o.problem||'')} · 📞 ${o.customerPhone||'—'}${total?` · 💰 ${total.toLocaleString()} ر.ي`:''}</div>
         <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div>
         <div class="row-actions">
           ${active?`<button class="btn sm" onclick="admReassignService('${o.id}')">🔄 تحويل لمركز آخر</button>`:''}
@@ -1468,7 +1471,7 @@
     document.getElementById('sheet').innerHTML=`
       <h3>🔄 تحويل لمركز آخر</h3>
       <div class="sh-sub">اختر المركز الجديد لهذا الطلب — يبدأ الاستلام من جديد.</div>
-      <div class="opt" style="flex-direction:column;gap:8px;">${centers.map(c=>`<button class="chip" style="text-align:right;width:100%;" onclick="doAdmReassignSvc('${id}','${c.id}','${String(c.businessName||c.ownerName||'مركز').replace(/'/g,'')}')">🔧 ${c.businessName||c.ownerName||'مركز'}${c.address?' — '+c.address:''}</button>`).join('')}</div>
+      <div class="opt" style="flex-direction:column;gap:8px;">${centers.map(c=>`<button class="chip" style="text-align:right;width:100%;" onclick="doAdmReassignSvc('${id}','${c.id}','${esc(String(c.businessName||c.ownerName||'مركز').replace(/'/g,''))}')">🔧 ${esc(c.businessName||c.ownerName||'مركز')}${esc(c.address?' — '+c.address:'')}</button>`).join('')}</div>
       <div class="sheet-alt"><button class="linkbtn" onclick="closeModal()">إغلاق</button></div>`;
     document.getElementById('modal').classList.remove('hidden');
   }
@@ -1496,9 +1499,9 @@
       <div class="card">
         <div class="img">${p.imageUri?`<img src="${p.imageUri}" alt="">`:'📷'}</div>
         <div class="body">
-          <h3>${p.nameAr||''}</h3>
+          <h3>${esc(p.nameAr||'')}</h3>
           <div class="price">${(p.price||0).toLocaleString()} ر.ي</div>
-          <div class="desc">${(p.descriptionAr||'').slice(0,90)}</div>
+          <div class="desc">${esc((p.descriptionAr||'').slice(0,90))}</div>
           <div class="stock ${p.inStock?'in':'out'}">${p.inStock?'متوفر':'غير متوفر'}</div>
           <button class="btn green wa" onclick="openDetail('${p.id}')">🛒 اطلب الآن</button>
         </div>
