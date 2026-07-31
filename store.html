@@ -1173,14 +1173,30 @@
     </div>`).join('')||'<div class="det">لا طرق — أضِف واحدة.</div>';
   }
   function drawCats(){
-    document.getElementById('catEdit').innerHTML=setCats.map((c,i)=>`<div class="irow" style="gap:8px;">
-      ${inp(c.nameAr,'اسم القسم',`setCats[${i}].nameAr=this.value`)}
-      <button class="linkbtn" style="color:#dc2626;" onclick="setCats.splice(${i},1);drawCats()">حذف</button></div>`).join('')||'<div class="det">لا أقسام.</div>';
+    document.getElementById('catEdit').innerHTML=setCats.map((c,i)=>{
+      const subs=c.subcategories||[];
+      return `<div class="irow" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <b style="color:var(--primary);">▸</b>
+          ${inp(c.nameAr,'اسم القسم الرئيسي',`setCats[${i}].nameAr=this.value`)}
+          <button class="linkbtn" style="color:#dc2626;" onclick="setCats.splice(${i},1);drawCats()">حذف القسم</button>
+        </div>
+        <div style="padding-inline-start:22px;display:flex;flex-direction:column;gap:6px;border-inline-start:2px solid var(--border);margin-inline-start:6px;">
+          ${subs.map((s,j)=>`<div style="display:flex;gap:8px;align-items:center;">
+            <span style="color:var(--muted);">↳</span>
+            ${inp(s.nameAr,'اسم القسم الفرعي',`setCats[${i}].subcategories[${j}].nameAr=this.value`)}
+            <button class="linkbtn" style="color:#dc2626;" onclick="setCats[${i}].subcategories.splice(${j},1);drawCats()">✕</button>
+          </div>`).join('')}
+          <button class="btn ghost sm" style="align-self:flex-start;" onclick="addSub(${i})">+ قسم فرعي</button>
+        </div>
+      </div>`;
+    }).join('')||'<div class="det">لا أقسام.</div>';
   }
+  function addSub(i){ setCats[i].subcategories=setCats[i].subcategories||[]; setCats[i].subcategories.push({id:gid(),nameAr:'قسم فرعي'}); setCats[i].hasSubcategories=true; drawCats(); }
   function gid(){ return 'c'+Math.random().toString(36).slice(2,8); }
   function addShip(){ setShip.push({id:gid(),labelAr:'خيار جديد',ruleType:'paid',fee:500,freeThreshold:0,enabled:true,isDefault:setShip.length===0}); drawShip(); }
   function addPay(){ setPay.push({id:gid(),labelAr:'طريقة جديدة',accountNumber:'',accountName:'',detailsAr:'',enabled:true,isDefault:setPay.length===0}); drawPay(); }
-  function addCat(){ setCats.push({id:gid(),nameAr:'قسم جديد'}); drawCats(); }
+  function addCat(){ setCats.push({id:gid(),nameAr:'قسم جديد',subcategories:[],hasSubcategories:false}); drawCats(); }
   async function saveGeneral(){
     const p={
       joinEnabled: document.getElementById('gJoin').checked,
@@ -1203,7 +1219,7 @@
   }
   async function saveShip(){ try{ await db.collection('settings').doc('shipping').set({items:setShip,updatedAt:Date.now()},{merge:true}); toast('حُفظ الشحن ✅'); }catch(e){ toast('تعذّر: '+(e.code||e.message||'')); } }
   async function savePay(){ try{ await db.collection('settings').doc('payments').set({items:setPay,updatedAt:Date.now()},{merge:true}); toast('حُفظت طرق الدفع ✅'); }catch(e){ toast('تعذّر: '+(e.code||e.message||'')); } }
-  async function saveCats(){ try{ await db.collection('settings').doc('categories').set({items:setCats,updatedAt:Date.now()},{merge:true}); toast('حُفظت الأقسام ✅'); }catch(e){ toast('تعذّر: '+(e.code||e.message||'')); } }
+  async function saveCats(){ setCats.forEach(c=>{ c.subcategories=c.subcategories||[]; c.hasSubcategories=c.subcategories.length>0; }); try{ await db.collection('settings').doc('categories').set({items:setCats,updatedAt:Date.now()},{merge:true}); toast('حُفظت الأقسام والفروع ✅'); }catch(e){ toast('تعذّر: '+(e.code||e.message||'')); } }
 
   // ═══════════════ النسخ والتصدير ═══════════════
   function renderBackup(){
