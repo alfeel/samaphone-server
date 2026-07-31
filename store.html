@@ -1053,7 +1053,23 @@
   function drawSettings(){
     const el=document.getElementById('admSettings');
     const dc=setCfg.defaultCommission||{type:'percent',value:10}, sc=setCfg.serviceCommission||{type:'percent',value:10};
+    const esc=(v)=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
     el.innerHTML=`
+      <div class="ibox">
+        <div class="irow" style="flex-direction:column;align-items:stretch;gap:10px;">
+          <b>⚙️ إعدادات عامة</b>
+          <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" id="gJoin" ${setCfg.joinEnabled!==false?'checked':''}> فتح باب الانضمام (مورد/مندوب/مركز)</label>
+          <div class="det">نص الضمان (يظهر في المنتجات):</div>
+          <textarea id="gWarranty" class="field" rows="2" style="margin:0;">${esc(setCfg.warrantyText)}</textarea>
+          <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" id="gWebEn" ${setCfg.webEnabled?'checked':''}> تفعيل رابط الموقع في التطبيق</label>
+          <input id="gWebUrl" class="field" style="margin:0;" placeholder="رابط الموقع (https://www.samaphone.store)" value="${esc(setCfg.webUrl)}">
+          <div class="det">تحديث التطبيق:</div>
+          <input id="gVer" class="field" style="margin:0;" placeholder="أحدث إصدار (مثال 1.0.1)" value="${esc(setCfg.latestVersion)}">
+          <input id="gUpUrl" class="field" style="margin:0;" placeholder="رابط تنزيل التحديث" value="${esc(setCfg.updateUrl)}">
+          <input id="gUpNote" class="field" style="margin:0;" placeholder="ملاحظة التحديث" value="${esc(setCfg.updateNote)}">
+          <button class="btn sm" style="margin-top:4px;" onclick="saveGeneral()">💾 حفظ العام</button>
+        </div>
+      </div>
       <div class="ibox">
         <div class="irow" style="flex-direction:column;align-items:stretch;gap:10px;">
           <b>💰 العمولة — تحدّدها الإدارة فقط</b>
@@ -1107,6 +1123,20 @@
   function addShip(){ setShip.push({id:gid(),labelAr:'خيار جديد',ruleType:'paid',fee:500,freeThreshold:0,enabled:true,isDefault:setShip.length===0}); drawShip(); }
   function addPay(){ setPay.push({id:gid(),labelAr:'طريقة جديدة',accountNumber:'',accountName:'',detailsAr:'',enabled:true,isDefault:setPay.length===0}); drawPay(); }
   function addCat(){ setCats.push({id:gid(),nameAr:'قسم جديد'}); drawCats(); }
+  async function saveGeneral(){
+    const p={
+      joinEnabled: document.getElementById('gJoin').checked,
+      warrantyText: document.getElementById('gWarranty').value,
+      webEnabled: document.getElementById('gWebEn').checked,
+      webUrl: document.getElementById('gWebUrl').value.trim(),
+      latestVersion: document.getElementById('gVer').value.trim(),
+      updateUrl: document.getElementById('gUpUrl').value.trim(),
+      updateNote: document.getElementById('gUpNote').value.trim(),
+      updatedAt: Date.now(),
+    };
+    try{ await db.collection('settings').doc('config').set(p,{merge:true}); toast('حُفظت الإعدادات العامة ✅'); }
+    catch(e){ toast('تعذّر: '+(e.code||e.message||'')); }
+  }
   async function saveCommission(){
     const dc={type:document.getElementById('dcType').value,value:+document.getElementById('dcVal').value||0};
     const sc={type:document.getElementById('scType').value,value:+document.getElementById('scVal').value||0};
