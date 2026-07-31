@@ -585,6 +585,7 @@
   function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function fmtDate(ts){
     if(!ts) return '';
+    if(typeof ts==='object' && typeof ts.toMillis==='function') ts = ts.toMillis();  // Timestamp من التطبيق
     try{ return new Date(ts).toLocaleString('ar', {dateStyle:'medium', timeStyle:'short'}); }
     catch(e){ return new Date(ts).toLocaleString(); }
   }
@@ -600,7 +601,7 @@
         <div class="orow"><b>${esc(o.productName||'منتج')}</b><span class="obadge" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>
         <div class="ometa">💵 ${(o.price||0).toLocaleString()}${fee} = <b>${total} ر.ي</b>${o.orderNo?` · طلب #${o.orderNo}`:''}</div>
         ${o.shippingLabel?`<div class="ometa">🚚 ${o.shippingLabel}</div>`:''}
-        ${o.paymentMethod?`<div class="ometa">💳 ${payLabel(o.paymentMethod)}</div>`:''}
+        ${o.paymentMethod?`<div class="ometa">💳 ${esc(o.paymentLabel||payLabel(o.paymentMethod))}</div>`:''}
         <div class="ometa">🕐 ${fmtDate(o.createdAt)}</div>
       </div>`;
     }).join('');
@@ -695,13 +696,17 @@
     const btn = document.getElementById('orderBtn'); btn.disabled=true; btn.textContent='جارٍ إرسال الطلب…';
     try{
       const ref = db.collection('orders').doc();
-      const pm = (selPay && selPay.id==='cash-on-delivery') ? 'cod' : (selPay ? 'wallet' : 'cod');
+      // نميّز الدفع عند الاستلام من المحفظة/التحويل: العميل يختار من خيارات الإدارة.
+      const pid = (selPay && (selPay.id||'')).toLowerCase(), plabel = (selPay && (selPay.labelAr||'')).toLowerCase();
+      const isCod = /cod|استلام|عند/.test(pid) || /استلام|عند/.test(plabel);
+      const pm = selPay ? (isCod ? 'cod' : 'wallet') : 'cod';
       const order = {
         id:ref.id, productId:p.id, productName:p.nameAr||'منتج', price:sub, customerId:uid,
         phone:myPhone||'', supplierId:(p.supplierId??null), repId:null, status:'pending',
         paymentMethod:pm, deliveryFee:fee, adminSeenAt:null, adminPickupSeenAt:null,
         createdAt:now, updatedAt:now,
       };
+      if(selPay) order.paymentLabel = selPay.labelAr||'';   // نص طريقة الدفع كما اختارها العميل
       if(selShip) order.shippingLabel = selShip.labelAr;
       if(p.commission) order.commission = p.commission;   // عمولة الإدارة مثبّتة وقت الطلب
       const batch = db.batch();
@@ -786,7 +791,7 @@
     el.innerHTML=supProducts.map(p=>{
       const st=PSTAT[p.status]||{t:p.status,c:'#888'};
       return `<div class="pcard">
-        <div class="pimg">${p.imageUri?`<img src="${p.imageUri}" class="pimg">`:'📷'}</div>
+        <div class="pimg">${p.imageUri?`<img src="${esc(p.imageUri)}" class="pimg">`:'📷'}</div>
         <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي</div>
         ${p.status==='rejected'&&p.rejectionReason?`<div class="pm" style="color:#dc2626">سبب: ${p.rejectionReason}</div>`:''}</div>
         <span class="pstatus" style="background:${st.c}22;color:${st.c}">${st.t}</span></div>`;
@@ -906,7 +911,7 @@
     const el=document.getElementById('admPending'); if(!el) return;
     if(!admPending.length){ el.innerHTML='<div class="center">لا منتجات بانتظار المراجعة ✅</div>'; return; }
     el.innerHTML=admPending.map(p=>`<div class="pcard" style="flex-wrap:wrap;">
-      <div class="pimg">${p.imageUri?`<img src="${p.imageUri}" class="pimg">`:'📷'}</div>
+      <div class="pimg">${p.imageUri?`<img src="${esc(p.imageUri)}" class="pimg">`:'📷'}</div>
       <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div>
       ${p.descriptionAr?`<div class="pm">${esc(p.descriptionAr)}</div>`:''}</div>
       <div class="row-actions" style="width:100%;"><button class="btn green sm" onclick="admApprove('${p.id}')">✅ موافقة</button>
@@ -1020,7 +1025,7 @@
       return `<div class="ocard">
         <div class="orow"><b>${esc(w.titleAr||'موضوع')}</b><span class="obadge" style="background:${appr?'#05966922':'#d9770622'};color:${appr?'#059669':'#d97706'}">${appr?'معتمد':'بانتظار الاعتماد'}</span></div>
         ${w.descriptionAr?`<div class="ometa">${esc(w.descriptionAr)}</div>`:''}
-        ${imgs.length?`<div class="thumbs" style="margin-top:8px;">${imgs.slice(0,4).map(u=>`<div class="th"><img src="${u}"></div>`).join('')}</div>`:''}
+        ${imgs.length?`<div class="thumbs" style="margin-top:8px;">${imgs.slice(0,4).map(u=>`<div class="th"><img src="${esc(u)}"></div>`).join('')}</div>`:''}
         ${w.ownerPhone?`<div class="ometa">📞 ${w.ownerPhone}</div>`:''}
         <div class="row-actions">
           ${!appr?`<button class="btn green sm" onclick="approveWork('${w.id}')">✅ اعتماد</button>`:''}
@@ -1303,7 +1308,7 @@
     el.innerHTML=list.map(p=>{
       const st=PSTAT[p.status]||{t:p.status,c:'#888'};
       return `<div class="pcard" style="flex-wrap:wrap;">
-        <div class="pimg">${p.imageUri?`<img src="${p.imageUri}" class="pimg">`:'📷'}</div>
+        <div class="pimg">${p.imageUri?`<img src="${esc(p.imageUri)}" class="pimg">`:'📷'}</div>
         <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div></div>
         <span class="pstatus" style="background:${st.c}22;color:${st.c}">${st.t}</span>
         <div class="row-actions" style="width:100%;"><button class="btn red sm" onclick="admDeleteProduct('${p.id}','${esc((p.nameAr||'').replace(/'/g,''))}')">🗑️ حذف المنتج</button></div>
@@ -1497,7 +1502,7 @@
     document.getElementById('empty').classList.toggle('hidden', list.length>0);
     grid.innerHTML = list.map(p=>`
       <div class="card">
-        <div class="img">${p.imageUri?`<img src="${p.imageUri}" alt="">`:'📷'}</div>
+        <div class="img">${p.imageUri?`<img src="${esc(p.imageUri)}" alt="">`:'📷'}</div>
         <div class="body">
           <h3>${esc(p.nameAr||'')}</h3>
           <div class="price">${(p.price||0).toLocaleString()} ر.ي</div>

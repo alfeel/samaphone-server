@@ -29,7 +29,8 @@ module.exports = async (req, res) => {
   try { caller = await admin.auth().verifyIdToken(idToken); }
   catch { return res.status(401).json({ error: "unauthorized", message: "جلسة غير صالحة، أعد الدخول." }); }
   const callerDoc = (await admin.firestore().collection("users").doc(caller.uid).get()).data() || {};
-  if (callerDoc.role !== "admin") return res.status(403).json({ error: "forbidden", message: "تحتاج صلاحية مدير." });
+  // مدير فعّال فقط — الحساب المُعطَّل يفقد صلاحيته (اتساقًا مع قواعد Firestore).
+  if (callerDoc.role !== "admin" || callerDoc.active === false) return res.status(403).json({ error: "forbidden", message: "تحتاج صلاحية مدير." });
 
   // 2) الهدف
   let targetAuth;
