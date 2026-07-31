@@ -85,7 +85,7 @@
 <div id="store" class="hidden">
   <header>
     <div class="hrow">
-      <div class="logo"><span class="box">📱</span> <div><div>سما فون</div><div class="tag">متجرك الأول للجوالات والإلكترونيات</div></div></div>
+      <div class="logo" style="cursor:pointer;" onclick="goHome()" title="الرئيسية"><span class="box">📱</span> <div><div>سما فون</div><div class="tag">🏠 الرئيسية</div></div></div>
       <button class="btn ghost" style="background:#fff;" onclick="logout()">خروج</button>
     </div>
     <div id="roleTag" class="roletag hidden"></div>
@@ -531,6 +531,7 @@
     showView((NAV[myRole]||NAV.customer)[0][0]);
   }
 
+  function goHome(){ showView((NAV[myRole]||NAV.customer)[0][0]); }
   function buildNav(){
     const items = NAV[myRole] || NAV.customer;
     document.getElementById('nav').innerHTML = items.map(([k,l])=>{
