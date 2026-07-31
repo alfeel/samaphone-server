@@ -196,6 +196,11 @@
     <input id="uq" class="search" placeholder="ابحث بالاسم أو الرقم أو الرمز..." oninput="renderUsers()" />
     <div id="admUsers"></div>
   </div>
+  <div id="view-adm-requests" class="view wrap hidden">
+    <h2 class="vtitle">🙋 طلبات الانضمام</h2>
+    <p class="ihint">اعتمد أو ارفض طلبات المورّدين والمناديب ومراكز الصيانة.</p>
+    <div id="admRequests"></div>
+  </div>
   <div id="view-adm-products" class="view wrap hidden">
     <h2 class="vtitle">🗂️ إدارة المنتجات</h2>
     <input id="apq" class="search" placeholder="ابحث باسم المنتج..." oninput="renderAdmProducts()" />
@@ -334,7 +339,7 @@
   let myRole = 'customer', myName = '', myPhone = '', myPerms = {};
   // بيانات الأدوار
   let supProducts = [], supOrders = [], repAvail = [], repMine = [], admPending = [], admUsers = [], admOrders = [];
-  let centers = [], myServices = [], centerServices = [], admServices = [], admAllProducts = [], admWorks = [];
+  let centers = [], myServices = [], centerServices = [], admServices = [], admAllProducts = [], admWorks = [], admRequests = [];
   let cfgCommission = { serviceCommission: { type:'percent', value:10 } };
   const SVC_STATUS = {
     pending:{t:'بانتظار الاستلام',c:'#d97706'}, received:{t:'تم الاستلام',c:'#2563eb'},
@@ -350,7 +355,7 @@
     supplier: [['sup-products','🏷️ منتجاتي'],['sup-add','➕ إضافة منتج'],['sup-orders','📦 الطلبات'],['meshkilati','🛠️ مشكلتي']],
     rep:      [['rep-available','🛵 متاح'],['rep-mine','🚚 توصيلاتي']],
     center:   [['center','🔧 طلبات الصيانة']],
-    admin:    [['adm-pending','🕵️ مراجعة'],['adm-products','🗂️ المنتجات'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['adm-services','🔧 الصيانة'],['adm-finance','💰 المالية'],['adm-works','🖼️ أعمالنا'],['adm-settings','⚙️ الإعدادات'],['adm-backup','💾 النسخ']],
+    admin:    [['adm-pending','🕵️ مراجعة'],['adm-requests','🙋 الانضمام'],['adm-products','🗂️ المنتجات'],['adm-users','👥 المستخدمون'],['adm-orders','📋 الطلبات'],['adm-services','🔧 الصيانة'],['adm-finance','💰 المالية'],['adm-works','🖼️ أعمالنا'],['adm-settings','⚙️ الإعدادات'],['adm-backup','💾 النسخ']],
   };
   const ROLE_AR = { customer:'عميل', supplier:'مورّد', rep:'مندوب', admin:'إدارة', center:'مركز صيانة' };
 
@@ -518,7 +523,7 @@
     if(myRole==='rep'){ watchRepAvailable(); watchRepMine(); }
     if(myRole==='center'){ watchCenterServices(); }
     if(myRole==='admin'){
-      watchPending(); watchAllProducts(); watchUsers(); watchAllOrders(); watchAdmServices(); watchWorks(); loadCenters();
+      watchPending(); watchAllProducts(); watchUsers(); watchAllOrders(); watchAdmServices(); watchWorks(); loadCenters(); watchRequests();
       try{ const cf=await db.collection('settings').doc('config').get(); const d=cf.data()||{}; if(d.serviceCommission) cfgCommission.serviceCommission=d.serviceCommission; }catch(e){}
     }
 
@@ -569,7 +574,7 @@
       'rep-available': renderRepAvail, 'rep-mine': renderRepMine,
       'adm-pending': renderPending, 'adm-users': renderUsers, 'adm-orders': renderAdmOrders,
       'adm-products': renderAdmProducts,
-      'adm-finance': renderFinance, 'adm-works': renderWorks, 'adm-backup': renderBackup, 'adm-settings': renderSettings,
+      'adm-finance': renderFinance, 'adm-works': renderWorks, 'adm-backup': renderBackup, 'adm-settings': renderSettings, 'adm-requests': renderRequests,
       services: renderServices, center: renderCenter, 'adm-services': renderAdmServices,
     };
     if(R[v]) R[v]();
@@ -1027,6 +1032,59 @@
     if(!confirm('حذف «'+(title||'')+'» نهائيًا؟')) return;
     try{ await db.collection('workPosts').doc(id).delete(); toast('تم الحذف ✅'); }
     catch(e){ toast('تعذّر الحذف: '+(e.code||e.message||'')); }
+  }
+
+  // ═══════════════ طلبات الانضمام (الإدارة) ═══════════════
+  function watchRequests(){
+    subs.req && subs.req();
+    subs.req=db.collection('users').where('requestedRole','in',['supplier','rep','center']).onSnapshot(s=>{
+      admRequests=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      const nb=document.getElementById('nav-adm-requests'); // شارة اختيارية
+      if(currentView==='adm-requests') renderRequests();
+    },()=>{});
+  }
+  function renderRequests(){
+    const el=document.getElementById('admRequests'); if(!el) return;
+    const pend=admRequests.filter(u=>u.requestedRole && u.role!==u.requestedRole);
+    if(!pend.length){ el.innerHTML='<div class="center">لا طلبات انضمام معلّقة ✅</div>'; return; }
+    el.innerHTML=pend.map(u=>{
+      const rd=u.requestData||{};
+      const extra=u.requestedRole==='center'
+        ? `${rd.businessName?`🏪 ${rd.businessName}`:''}${rd.serviceType?` · ${({maintenance:'صيانة',programming:'برمجة',both:'صيانة وبرمجة'}[rd.serviceType]||rd.serviceType)}`:''}${rd.address?` · 📍 ${rd.address}`:''}`
+        : `${rd.residence?`🏠 ${rd.residence}`:''}`;
+      return `<div class="ocard">
+        <div class="orow"><b>${u.name||'—'}</b><span class="obadge" style="background:#7c3aed22;color:#7c3aed">${ROLE_AR[u.requestedRole]||u.requestedRole}</span></div>
+        <div class="ometa">📞 ${u.phone||'—'}${u.email?` · ${u.email}`:''}</div>
+        ${extra?`<div class="ometa">${extra}</div>`:''}
+        ${u.requestNote?`<div class="ometa">📝 ${u.requestNote}</div>`:''}
+        ${u.requestRejectedReason?`<div class="ometa" style="color:#dc2626">مرفوض سابقًا: ${u.requestRejectedReason}</div>`:''}
+        <div class="row-actions">
+          <button class="btn green sm" onclick="approveRequest('${u.id}','${u.requestedRole}')">✅ اعتماد ${ROLE_AR[u.requestedRole]||''}</button>
+          <button class="btn red sm" onclick="rejectRequest('${u.id}')">✕ رفض</button>
+        </div></div>`;
+    }).join('');
+  }
+  async function approveRequest(uid, role){
+    const u=admRequests.find(x=>x.id===uid)||{};
+    try{
+      await db.collection('users').doc(uid).update({ role, requestedRole:null, requestRejectedReason:null });
+      // مركز صيانة: ننشره في مجموعة centers ليظهر للعملاء
+      if(role==='center'){
+        const rd=u.requestData||{};
+        await db.collection('centers').doc(uid).set({
+          ownerName: rd.ownerName||'', businessName: rd.businessName||u.name||'',
+          serviceType: rd.serviceType||'both', location: rd.location||null,
+          contactPhone: rd.contactPhone||u.phone||'', address: rd.address||'',
+          active:true, updatedAt:Date.now(),
+        },{merge:true}).catch(()=>{});
+      }
+      toast('تم الاعتماد ✅');
+    }catch(e){ toast('تعذّر الاعتماد: '+(e.code||e.message||'')); }
+  }
+  async function rejectRequest(uid){
+    const reason=prompt('سبب الرفض (ليصحّح الطالب):'); if(reason===null) return;
+    try{ await db.collection('users').doc(uid).update({ requestRejectedReason: reason.trim()||'لم يُذكر سبب' }); toast('تم الرفض'); }
+    catch(e){ toast('تعذّر: '+(e.code||e.message||'')); }
   }
 
   // ═══════════════ الإعدادات (الإدارة) ═══════════════
