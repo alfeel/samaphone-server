@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>سما فون — المتجر</title>
+<title>سماء فون — المتجر</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>
   :root{ --primary:#1B8EF8; --primaryDark:#0060C0; --bg:#F5F8FF; --card:#FFFFFF; --text:#1A2138; --muted:#8B9BB4; --border:#E2E8F0; --green:#25D366; }
@@ -55,7 +55,7 @@
 <!-- شاشة الدخول -->
 <div id="login" class="wrap">
   <div class="login-card">
-    <div class="logo" style="justify-content:center; color:var(--primary); margin-bottom:14px;"><span class="box">📱</span> سما فون</div>
+    <div class="logo" style="justify-content:center; color:var(--primary); margin-bottom:14px;"><span class="box">📱</span> سماء فون</div>
     <h2>الدخول للمتجر</h2>
     <p>بنفس حسابك في التطبيق</p>
     <div class="tabs">
@@ -85,7 +85,7 @@
 <div id="store" class="hidden">
   <header>
     <div class="hrow">
-      <div class="logo" style="cursor:pointer;" onclick="goHome()" title="الرئيسية"><span class="box">📱</span> <div><div>سما فون</div><div class="tag">🏠 الرئيسية</div></div></div>
+      <div class="logo" style="cursor:pointer;" onclick="goHome()" title="الرئيسية"><span class="box">📱</span> <div><div>سماء فون</div><div class="tag">🏠 الرئيسية</div></div></div>
       <button class="btn ghost" style="background:#fff;" onclick="logout()">خروج</button>
     </div>
     <div id="roleTag" class="roletag hidden"></div>
@@ -244,7 +244,7 @@
     <div id="backupInfo" class="ihint" style="margin-top:12px;"></div>
   </div>
 
-  <footer>© سما فون — نفس منتجات وحسابات التطبيق · <a href="mailto:a.alfeel50@gmail.com">a.alfeel50@gmail.com</a> · <a href="/privacy.html">سياسة الخصوصية</a></footer>
+  <footer>© سماء فون — نفس منتجات وحسابات التطبيق · <a href="mailto:a.alfeel50@gmail.com">a.alfeel50@gmail.com</a> · <a href="/privacy.html">سياسة الخصوصية</a></footer>
 </div>
 
 <!-- نافذة الطلب -->
@@ -953,7 +953,7 @@
       if(!r.ok){ toast(d.message||'تعذّر إرسال الرابط'); return; }
       if(d.channel==='email'){ toast('أُرسل رابط الاستعادة إلى '+d.to+' ✅'); }
       else {
-        const msg=encodeURIComponent('رابط استعادة كلمة مرور حسابك في سما فون:\n'+d.link);
+        const msg=encodeURIComponent('رابط استعادة كلمة مرور حسابك في سماء فون:\n'+d.link);
         if(d.phone){ window.open('https://wa.me/967'+String(d.phone).replace(/^0+/,'')+'?text='+msg,'_blank'); toast('افتح واتساب لإرسال الرابط للعميل'); }
         else { prompt('انسخ الرابط وأرسله للعميل:', d.link); }
       }
