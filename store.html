@@ -1476,7 +1476,7 @@
     document.getElementById('modal').classList.remove('hidden');
   }
   async function doAdmReassignSvc(id, centerId, centerName){
-    try{ await db.collection('serviceOrders').doc(id).update({ centerId, centerName, status:'pending', updatedAt:Date.now() });
+    try{ await db.collection('serviceOrders').doc(id).update({ centerId, centerName, status:'pending', escalated:false, updatedAt:Date.now() });
       closeModal(); toast('تم التحويل للمركز الجديد ✅'); }
     catch(e){ toast('تعذّر التحويل: '+(e.code||e.message||'')); }
   }
