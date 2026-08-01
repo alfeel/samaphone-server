@@ -58,17 +58,19 @@
     <div class="logo" style="justify-content:center; color:var(--primary); margin-bottom:14px;"><span class="box">📱</span> سماء فون</div>
     <h2>الدخول للمتجر</h2>
     <p>بنفس حسابك في التطبيق</p>
-    <div class="tabs">
-      <button id="tabPhone" class="active" onclick="setMode('phone')">برقم الجوال</button>
-      <button id="tabEmail" onclick="setMode('email')">بالبريد</button>
-    </div>
+    <!-- التسجيل: اسم + بريد + رقم؛ الدخول: حقل موحّد (رقم أو بريد) -->
     <input id="regName" class="field hidden" placeholder="اسمك" />
-    <input id="identifier" class="field" placeholder="7XXXXXXXX" />
+    <input id="regEmail" class="field hidden" type="email" placeholder="البريد الإلكتروني" />
+    <input id="regPhone" class="field hidden" type="tel" placeholder="رقم الجوال (7XXXXXXXX)" />
+    <input id="identifier" class="field" placeholder="رقم الجوال أو البريد الإلكتروني" />
     <div class="pwwrap">
       <input id="password" class="field" type="password" placeholder="كلمة المرور" style="margin-bottom:0;" />
       <button type="button" class="pweye" onclick="togglePw()" id="pwEye" aria-label="إظهار كلمة المرور">👁️</button>
     </div>
-    <button id="submitBtn" class="btn" style="width:100%;" onclick="submitAuth()">دخول</button>
+    <div class="pwwrap hidden" id="confirmWrap" style="margin-top:10px;">
+      <input id="confirm" class="field" type="password" placeholder="تأكيد كلمة المرور" style="margin-bottom:0;" />
+    </div>
+    <button id="submitBtn" class="btn" style="width:100%;margin-top:10px;" onclick="submitAuth()">دخول</button>
     <div style="text-align:center; color:var(--muted); font-size:13px; margin:12px 0;">أو</div>
     <button class="btn" style="width:100%; background:#fff; color:#3c4043; border:1px solid var(--border);" onclick="doGoogle()">
       <span style="color:#4285F4; font-weight:700;">G</span> الدخول بحساب Google
@@ -85,7 +87,10 @@
 <div id="store" class="hidden">
   <header>
     <div class="hrow">
-      <div class="logo" style="cursor:pointer;" onclick="goHome()" title="الرئيسية"><span class="box">📱</span> <div><div>سماء فون</div><div class="tag">🏠 الرئيسية</div></div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="backBtn" class="btn ghost hidden" style="background:#fff;padding:8px 12px;" onclick="goBack()" title="رجوع">→ رجوع</button>
+        <div class="logo" style="cursor:pointer;" onclick="goHome()" title="الرئيسية"><span class="box">📱</span> <div><div>سماء فون</div><div class="tag">🏠 الرئيسية</div></div></div>
+      </div>
       <button class="btn ghost" style="background:#fff;" onclick="logout()">خروج</button>
     </div>
     <div id="roleTag" class="roletag hidden"></div>
@@ -371,8 +376,12 @@
 
   function toggleRegister(){
     registerMode = !registerMode;
-    document.getElementById('regName').classList.toggle('hidden', !registerMode || mode==='email' ? !registerMode : false);
+    // التسجيل: اسم + بريد + رقم + تأكيد؛ الدخول: حقل موحّد فقط.
     document.getElementById('regName').classList.toggle('hidden', !registerMode);
+    document.getElementById('regEmail').classList.toggle('hidden', !registerMode);
+    document.getElementById('regPhone').classList.toggle('hidden', !registerMode);
+    document.getElementById('confirmWrap').classList.toggle('hidden', !registerMode);
+    document.getElementById('identifier').classList.toggle('hidden', registerMode);
     document.getElementById('submitBtn').textContent = registerMode ? 'إنشاء حساب' : 'دخول';
     document.getElementById('switchTxt').textContent = registerMode ? 'لديك حساب؟' : 'ليس لديك حساب؟';
     document.getElementById('switchLink').textContent = registerMode ? 'سجّل الدخول' : 'سجّل الآن';
@@ -381,23 +390,16 @@
   function submitAuth(){ registerMode ? doRegister() : doLogin(); }
   function togglePw(){ const i=document.getElementById('password'), e=document.getElementById('pwEye'); if(i.type==='password'){ i.type='text'; e.textContent='🙈'; } else { i.type='password'; e.textContent='👁️'; } }
 
-  function setMode(m){
-    mode = m;
-    document.getElementById('tabPhone').classList.toggle('active', m==='phone');
-    document.getElementById('tabEmail').classList.toggle('active', m==='email');
-    const idf = document.getElementById('identifier');
-    idf.placeholder = m==='phone' ? "7XXXXXXXX" : "البريد الإلكتروني";
-    idf.type = m==='phone' ? "tel" : "email";
-  }
-
   function toE164(input){
     const c = input.replace(/[\s\-()]/g,'');
     if(c.startsWith('+')) return c;
     return '+967' + c.replace(/^0+/,'');
   }
+  // الدخول: يكتشف بريدًا (فيه @) أو رقمًا (فيحوّله لبريد داخلي).
   function identifierToEmail(id){
-    if(mode==='email') return id.trim();
-    const digits = toE164(id).replace(/^\+/,'');
+    const t = id.trim();
+    if(t.includes('@')) return t;
+    const digits = toE164(t).replace(/^\+/,'');
     return digits + '@' + PHONE_DOMAIN;
   }
 
@@ -417,23 +419,27 @@
   }
   async function doRegister(){
     const err = document.getElementById('loginErr'); err.textContent='';
-    if(mode==='email'){ err.textContent='التسجيل الجديد بالرقم فقط. اختر «برقم الجوال».'; return; }
-    const name = document.getElementById('regName').value.trim();
-    const id = document.getElementById('identifier').value.trim();
-    const pw = document.getElementById('password').value;
-    if(!id || !pw || pw.length<6){ err.textContent='أدخل رقمًا وكلمة مرور (٦ أحرف على الأقل).'; return; }
-    const e164 = toE164(id);
+    // التسجيل: بريد + رقم + كلمة سر + تأكيدها (مثل التطبيق تمامًا).
+    const name  = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim().toLowerCase();
+    const phone = document.getElementById('regPhone').value.trim();
+    const pw    = document.getElementById('password').value;
+    const pw2   = document.getElementById('confirm').value;
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)){ err.textContent='أدخل بريدًا إلكترونيًا صحيحًا.'; return; }
+    const e164 = toE164(phone);
     if(!/^\+\d{9,15}$/.test(e164)){ err.textContent='رقم الجوال غير صحيح.'; return; }
+    if(!pw || pw.length<6){ err.textContent='كلمة المرور ٦ أحرف على الأقل.'; return; }
+    if(pw!==pw2){ err.textContent='كلمتا المرور غير متطابقتين.'; return; }
     const digits = e164.replace(/^\+/,'');
-    const email = digits + '@' + PHONE_DOMAIN;
     const local = e164.replace(/^\+967/,'');
     try{
+      // ننشئ الحساب بالبريد (هوية الدخول)، ونربط الرقم عبر phoneIndex للدخول به لاحقًا.
       const cred = await auth.createUserWithEmailAndPassword(email, pw);
       const uid = cred.user.uid;
-      await db.collection('users').doc(uid).set({ role:'customer', active:true, phone: local, name: name, createdAt: Date.now() });
+      await db.collection('users').doc(uid).set({ role:'customer', active:true, phone: local, name: name, email: email, createdAt: Date.now() });
       await db.collection('phoneIndex').doc(digits).set({ uid, email, createdAt: Date.now() }).catch(()=>{});
     }catch(e){
-      err.textContent = e.code==='auth/email-already-in-use' ? 'هذا الرقم مسجّل مسبقًا. سجّل الدخول.'
+      err.textContent = e.code==='auth/email-already-in-use' ? 'هذا البريد مسجّل مسبقًا. سجّل الدخول.'
         : (e.code==='auth/unauthorized-domain' ? 'النطاق غير مُصرّح في Firebase (Authorized domains).' : ('تعذّر التسجيل: '+(e.message||e.code)));
     }
   }
@@ -531,7 +537,13 @@
     showView((NAV[myRole]||NAV.customer)[0][0]);
   }
 
-  function goHome(){ showView((NAV[myRole]||NAV.customer)[0][0]); }
+  // سجلّ التنقّل — لزر «رجوع».
+  let viewHistory = [];
+  function goHome(){ viewHistory = []; showView((NAV[myRole]||NAV.customer)[0][0], true); }
+  function goBack(){
+    if(viewHistory.length > 0){ const prev = viewHistory.pop(); showView(prev, true); }
+    else { goHome(); }
+  }
   function buildNav(){
     const items = NAV[myRole] || NAV.customer;
     document.getElementById('nav').innerHTML = items.map(([k,l])=>{
@@ -562,8 +574,14 @@
   }
 
   // ── التنقّل بين الأقسام ──────────────────────────────────
-  function showView(v){
+  function showView(v, isBack){
+    // نُراكم التاريخ عند التنقّل الأمامي فقط (لا عند الرجوع/الرئيسية).
+    const home = (NAV[myRole]||NAV.customer)[0][0];
+    if(!isBack && currentView && currentView !== v){ viewHistory.push(currentView); if(viewHistory.length>30) viewHistory.shift(); }
     currentView = v;
+    // زر الرجوع يظهر في غير الصفحة الرئيسية أو عند وجود تاريخ.
+    const bb = document.getElementById('backBtn');
+    if(bb) bb.classList.toggle('hidden', v === home && viewHistory.length === 0);
     document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));
     const target = document.getElementById('view-'+v);
     if(target) target.classList.remove('hidden');
