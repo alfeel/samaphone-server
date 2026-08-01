@@ -131,6 +131,8 @@
       </div>
       <div id="mkAnswer" class="mkanswer hidden"></div>
     </div>
+    <h2 class="vtitle" style="margin-top:22px;">📍 أقرب مراكز الخدمة إليك</h2>
+    <div id="mkCenters"></div>
   </div>
 
   <!-- ═══ الخدمات (العميل) ═══ -->
@@ -595,8 +597,46 @@
       'adm-products': renderAdmProducts,
       'adm-finance': renderFinance, 'adm-works': renderWorks, 'adm-backup': renderBackup, 'adm-settings': renderSettings, 'adm-requests': renderRequests,
       services: renderServices, center: renderCenter, 'adm-services': renderAdmServices,
+      meshkilati: renderMeshCenters,
     };
     if(R[v]) R[v]();
+  }
+
+  // ── مراكز الخدمة في «مشكلتي» — قائمة مثل التطبيق (اتصال/خريطة/اطلب الخدمة) ──
+  async function renderMeshCenters(){
+    const el = document.getElementById('mkCenters');
+    if(!el) return;
+    if(!centers.length) await loadCenters();
+    if(!centers.length){ el.innerHTML = '<div class="center">لا مراكز خدمة متاحة حاليًا.</div>'; return; }
+    el.innerHTML = centers.map(c=>{
+      const name = esc(c.businessName||c.ownerName||'مركز خدمة');
+      const kind = c.serviceType==='maintenance' ? 'صيانة' : c.serviceType==='programming' ? 'برمجة' : 'صيانة وبرمجة';
+      const addr = c.address ? ' · '+esc(c.address) : '';
+      const phone = c.contactPhone ? esc(c.contactPhone) : '';
+      return `<div class="ocard">
+        <div style="font-weight:800;">🔧 ${name}</div>
+        <div class="omuted">${kind}${addr}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          ${phone?`<a class="btn ghost" href="tel:${phone}" style="text-decoration:none;">📞 اتصال</a>`:''}
+          <button class="btn ghost" onclick="mkOpenMap('${esc(String(c.businessName||c.ownerName||'مركز').replace(/'/g,''))}','${(c.location&&c.location.lat)||''}','${(c.location&&c.location.lng)||''}','${esc(String(c.address||'').replace(/'/g,''))}')">📍 الخريطة</button>
+          <button class="btn" style="flex:1;" onclick="requestServiceFromCenter('${c.id}')">🔧 اطلب الخدمة</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  function mkOpenMap(name, lat, lng, addr){
+    let q = (lat && lng) ? (lat+','+lng) : (addr || name || 'مركز صيانة');
+    window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q), '_blank');
+  }
+  // يفتح «الخدمات» مع تعبئة العطل من «مشكلتي» واختيار المركز مسبقًا.
+  async function requestServiceFromCenter(centerId){
+    if(!centers.length) await loadCenters();
+    showView('services');
+    const mk = document.getElementById('mkText');
+    const sp = document.getElementById('svcProblem');
+    if(sp && mk && mk.value.trim() && !sp.value.trim()) sp.value = mk.value.trim();
+    const sel = document.getElementById('svcCenter');
+    if(sel) sel.value = centerId;
   }
 
   // تهريب HTML لكل نص يتحكّم به المستخدم قبل إدراجه في innerHTML (منع XSS).
