@@ -32,10 +32,13 @@ module.exports = async (req, res) => {
 
   const html =
     `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #E2E8F0;border-radius:16px">` +
-    `<h2 style="color:#1B8EF8;margin:0 0 8px">سما فون — رمز التحقق</h2>` +
+    `<h2 style="color:#1B8EF8;margin:0 0 8px">سماء فون — رمز التحقق</h2>` +
     `<p style="color:#334155">رمز تحقّق بريدك:</p>` +
     `<div style="font-size:30px;font-weight:800;letter-spacing:6px;color:#0F172A;background:#F1F5F9;border-radius:12px;padding:14px;text-align:center">${code}</div>` +
     `<p style="color:#64748B;font-size:13px;margin-top:14px">صالح لمدة ١٠ دقائق. إن لم تطلبه فتجاهل هذه الرسالة.</p></div>`;
+
+  // نسخة نصية صريحة ترفع تقييم التسليم وتقلّل تصنيفه «غير مرغوب».
+  const text = `سماء فون — رمز التحقق\nرمز تحقّق بريدك: ${code}\nصالح لمدة 10 دقائق. إن لم تطلبه فتجاهل هذه الرسالة.`;
 
   let r, data;
   try {
@@ -43,10 +46,13 @@ module.exports = async (req, res) => {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "سما فون <noreply@samaphone.store>",
+        from: "سماء فون <noreply@samaphone.store>",
         to: [email],
-        subject: "رمز تحقق سما فون",
+        reply_to: "support@samaphone.store",
+        subject: `رمز تحقّق سماء فون: ${code}`,
         html,
+        text,
+        headers: { "List-Unsubscribe": "<mailto:support@samaphone.store>" },
       }),
     });
     data = await r.json().catch(() => ({}));
