@@ -118,6 +118,35 @@
     <div id="payInfo" class="ibox"></div>
   </div>
 
+  <!-- ═══ حسابي ═══ -->
+  <div id="view-account" class="view wrap hidden">
+    <h2 class="vtitle">👤 حسابي</h2>
+    <div id="accInfo" class="ibox"></div>
+
+    <h2 class="vtitle" style="margin-top:22px;">📱 رقم الجوال</h2>
+    <p class="ihint">أضِف رقمك لتتمكّن من الدخول به لاحقًا (إضافةً لبريدك) بنفس كلمة المرور.</p>
+    <div class="ibox" id="accPhoneBox">
+      <input id="accPhone" class="field" type="tel" placeholder="7XXXXXXXX" />
+      <button class="btn" id="accPhoneBtn" onclick="addPhoneWeb()">حفظ الرقم</button>
+      <div id="accPhoneMsg" class="err"></div>
+    </div>
+
+    <h2 class="vtitle" style="margin-top:22px;">📧 البريد الإلكتروني</h2>
+    <p class="ihint">أضِف بريدك ووثّقه برمز يصلك — لاستعادة الحساب والتواصل.</p>
+    <div class="ibox" id="accEmailBox">
+      <input id="accEmail" class="field" type="email" placeholder="name@example.com" />
+      <button class="btn" id="accEmailBtn" onclick="sendEmailCodeWeb()">إرسال رمز التحقق</button>
+      <div id="accCodeWrap" class="hidden" style="margin-top:10px;">
+        <input id="accCode" class="field" inputmode="numeric" placeholder="رمز التحقق" style="text-align:center;letter-spacing:6px;" />
+        <button class="btn" onclick="verifyEmailCodeWeb()">تأكيد وتوثيق البريد</button>
+        <p class="ihint" style="color:#b45309;">استخدم رمز آخر رسالة وصلتك — عند إعادة الإرسال تُلغى الرموز السابقة.</p>
+      </div>
+      <div id="accEmailMsg" class="err"></div>
+    </div>
+
+    <button class="btn" style="width:100%;background:#dc2626;margin-top:22px;" onclick="logout()">تسجيل الخروج</button>
+  </div>
+
   <!-- ═══ مشكلتي (مساعد الأعطال) ═══ -->
   <div id="view-meshkilati" class="view wrap hidden">
     <h2 class="vtitle">🛠️ مشكلتي — مساعد أعطال الأجهزة</h2>
@@ -358,7 +387,7 @@
 
   // القوائم حسب الدور — كل عنصر [مفتاح العرض, التسمية]
   const NAV = {
-    customer: [['store','🛍️ المتجر'],['orders','📦 طلباتي'],['services','🔧 الخدمات'],['meshkilati','🛠️ مشكلتي'],['info','💳 الدفع والشحن']],
+    customer: [['store','🛍️ المتجر'],['orders','📦 طلباتي'],['services','🔧 الخدمات'],['meshkilati','🛠️ مشكلتي'],['info','💳 الدفع والشحن'],['account','👤 حسابي']],
     supplier: [['sup-products','🏷️ منتجاتي'],['sup-add','➕ إضافة منتج'],['sup-orders','📦 الطلبات'],['meshkilati','🛠️ مشكلتي']],
     rep:      [['rep-available','🛵 متاح'],['rep-mine','🚚 توصيلاتي']],
     center:   [['center','🔧 طلبات الصيانة']],
@@ -597,7 +626,7 @@
       'adm-products': renderAdmProducts,
       'adm-finance': renderFinance, 'adm-works': renderWorks, 'adm-backup': renderBackup, 'adm-settings': renderSettings, 'adm-requests': renderRequests,
       services: renderServices, center: renderCenter, 'adm-services': renderAdmServices,
-      meshkilati: renderMeshCenters,
+      meshkilati: renderMeshCenters, account: renderAccount,
     };
     if(R[v]) R[v]();
   }
@@ -637,6 +666,71 @@
     if(sp && mk && mk.value.trim() && !sp.value.trim()) sp.value = mk.value.trim();
     const sel = document.getElementById('svcCenter');
     if(sel) sel.value = centerId;
+  }
+
+  // ── صفحة «حسابي» — بيانات + إضافة رقم/بريد + خروج ──
+  let accEmailToken = "";
+  function renderAccount(){
+    const el = document.getElementById('accInfo'); if(!el) return;
+    const email = (auth.currentUser && auth.currentUser.email) || '';
+    const realEmail = email && !email.endsWith('@'+PHONE_DOMAIN);
+    el.innerHTML =
+      `<div>👤 <b>الاسم:</b> ${esc(myName||'—')}</div>` +
+      `<div>🔑 <b>تدخل بـ:</b> ${realEmail?esc(email):('جوال '+esc(myPhone||'—'))}</div>` +
+      `<div>📱 <b>الرقم:</b> ${esc(myPhone||'غير مُضاف بعد')}</div>` +
+      `<div>🏷️ <b>النوع:</b> ${esc(ROLE_AR[myRole]||myRole)}</div>`;
+    const ap = document.getElementById('accPhone'); if(ap && myPhone) ap.placeholder = myPhone;
+  }
+
+  // إضافة رقم لحساب بريد — يربط phoneIndex بالبريد (بلا SMS/بطاقة)، محميّ من رقم مستخدم في حساب آخر.
+  async function addPhoneWeb(){
+    const msg = document.getElementById('accPhoneMsg'); msg.style.color='#dc2626'; msg.textContent='';
+    const uid = auth.currentUser && auth.currentUser.uid; if(!uid) return;
+    const email = (auth.currentUser && auth.currentUser.email) || '';
+    if(!email || email.endsWith('@'+PHONE_DOMAIN)){ msg.textContent='هذه الميزة لحسابات البريد فقط.'; return; }
+    const e164 = toE164(document.getElementById('accPhone').value.trim());
+    if(!/^\+\d{9,15}$/.test(e164)){ msg.textContent='رقم جوال غير صحيح.'; return; }
+    const digits = e164.replace(/^\+/,''), local = e164.replace(/^\+967/,'');
+    const btn = document.getElementById('accPhoneBtn'); btn.disabled=true; btn.textContent='جارٍ الحفظ…';
+    try{
+      const snap = await db.collection('phoneIndex').doc(digits).get();
+      if(snap.exists && snap.data() && snap.data().uid && snap.data().uid!==uid){ msg.textContent='هذا الرقم مرتبط بحساب آخر. استخدم رقمًا غيره.'; return; }
+      if(!snap.exists){ await db.collection('phoneIndex').doc(digits).set({ uid, email, createdAt: Date.now() }); }
+      await db.collection('users').doc(uid).update({ phone: local });
+      myPhone = local; msg.style.color='#059669'; msg.textContent='تمت إضافة رقمك ✅ يمكنك الدخول به.'; renderAccount();
+    }catch(e){ msg.textContent='تعذّر: '+(e.message||e.code||''); }
+    finally{ btn.disabled=false; btn.textContent='حفظ الرقم'; }
+  }
+
+  // إضافة/توثيق بريد عبر رمز Resend (مجاني، بلا بطاقة).
+  async function sendEmailCodeWeb(){
+    const msg = document.getElementById('accEmailMsg'); msg.style.color='#dc2626'; msg.textContent='';
+    const email = document.getElementById('accEmail').value.trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)){ msg.textContent='أدخل بريدًا إلكترونيًا صحيحًا.'; return; }
+    const btn = document.getElementById('accEmailBtn'); btn.disabled=true; btn.textContent='جارٍ الإرسال…';
+    try{
+      const r = await fetch('/api/email/send',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email})});
+      const d = await r.json().catch(()=>({}));
+      if(!r.ok){ msg.textContent=d.message||'تعذّر الإرسال.'; return; }
+      accEmailToken = d.token; document.getElementById('accCodeWrap').classList.remove('hidden');
+      msg.style.color='#059669'; msg.textContent='أُرسل رمز إلى بريدك — أدخله بالأسفل.';
+    }catch(e){ msg.textContent='تعذّر الاتصال.'; }
+    finally{ btn.disabled=false; btn.textContent='إرسال رمز التحقق'; }
+  }
+  async function verifyEmailCodeWeb(){
+    const msg = document.getElementById('accEmailMsg'); msg.style.color='#dc2626'; msg.textContent='';
+    const uid = auth.currentUser && auth.currentUser.uid; if(!uid) return;
+    const email = document.getElementById('accEmail').value.trim().toLowerCase();
+    const code = (document.getElementById('accCode').value||'').replace(/\D/g,'');
+    if(code.length<4){ msg.textContent='أدخل الرمز المُرسَل.'; return; }
+    try{
+      const r = await fetch('/api/email/verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,code,token:accEmailToken})});
+      const d = await r.json().catch(()=>({}));
+      if(!r.ok){ msg.textContent=d.message||'الرمز غير صحيح.'; return; }
+      await db.collection('users').doc(uid).update({ email, emailVerified:true, emailVerifiedAt:Date.now() });
+      msg.style.color='#059669'; msg.textContent='تم توثيق بريدك ✅';
+      document.getElementById('accCodeWrap').classList.add('hidden');
+    }catch(e){ msg.textContent='تعذّر التحقق.'; }
   }
 
   // تهريب HTML لكل نص يتحكّم به المستخدم قبل إدراجه في innerHTML (منع XSS).
