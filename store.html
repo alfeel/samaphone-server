@@ -735,6 +735,8 @@
 
   // تهريب HTML لكل نص يتحكّم به المستخدم قبل إدراجه في innerHTML (منع XSS).
   function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  // رمز رقمي ثابت (٦ خانات) من المعرّف — مطابق للتطبيق (أسهل نطقًا وبحثًا).
+  function ucode(id){ id=String(id||''); let h=0; for(let i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0; return String(h%1000000).padStart(6,'0'); }
   function fmtDate(ts){
     if(!ts) return '';
     if(typeof ts==='object' && typeof ts.toMillis==='function') ts = ts.toMillis();  // Timestamp من التطبيق
@@ -820,7 +822,7 @@
     const payHint = selPay && selPay.accountNumber ? `<div class="det" style="margin-top:8px;">حوّل إلى <b class="acct" onclick="copyTxt('${selPay.accountNumber}')">📋 ${selPay.accountNumber}</b>${selPay.accountName?` — ${selPay.accountName}`:''}</div>` : '';
     document.getElementById('sheet').innerHTML = `
       <h3>${esc(p.nameAr||'منتج')}</h3>
-      <div class="sh-sub">${p.inStock===false?'⚠️ غير متوفر حاليًا':'✅ متوفر'} · رمز المورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'الإدارة'}</div>
+      <div class="sh-sub">${p.inStock===false?'⚠️ غير متوفر حاليًا':'✅ متوفر'} · رمز المورد: ${p.supplierId?ucode(p.supplierId):'الإدارة'}</div>
       <div class="lbl">🚚 اختر الشحن</div>
       <div class="opt">${shipChips}</div>
       <div class="lbl">💳 اختر طريقة الدفع</div>
@@ -876,7 +878,7 @@
     if(selShip) m += `\n🚚 الشحن: ${selShip.labelAr} (${fee>0?fee.toLocaleString()+' ر.ي':'مجاني'})`;
     m += `\n🧾 الإجمالي: ${total.toLocaleString()} ر.ي`;
     if(selPay) m += `\n💳 الدفع: ${selPay.labelAr}${selPay.accountNumber?' — '+selPay.accountNumber:''}`;
-    m += `\n🏪 رمز المورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'الإدارة'}`;
+    m += `\n🏪 رمز المورد: ${p.supplierId?ucode(p.supplierId):'الإدارة'}`;
     if(p.specs) m += `\n📋 ${esc(p.specs)}`;
     return encodeURIComponent(m);
   }
@@ -889,7 +891,7 @@
   function pickCat(id){ activeCat=id; renderCats(); render(); }
 
   function orderMsg(p){
-    return encodeURIComponent(`مرحباً، أريد الطلب:\n📦 ${p.nameAr}\n💵 السعر: ${(p.price||0).toLocaleString()} ر.ي\n🏪 رمز المورد: ${p.supplierId? String(p.supplierId).slice(-6).toUpperCase():'الإدارة'}\n${p.specs?('📋 '+p.specs):''}`);
+    return encodeURIComponent(`مرحباً، أريد الطلب:\n📦 ${p.nameAr}\n💵 السعر: ${(p.price||0).toLocaleString()} ر.ي\n🏪 رمز المورد: ${p.supplierId? ucode(p.supplierId):'الإدارة'}\n${p.specs?('📋 '+p.specs):''}`);
   }
 
   // ═══════════════ مشكلتي (Gemini عبر /api/ai) ═══════════════
@@ -1064,7 +1066,7 @@
     if(!admPending.length){ el.innerHTML='<div class="center">لا منتجات بانتظار المراجعة ✅</div>'; return; }
     el.innerHTML=admPending.map(p=>`<div class="pcard" style="flex-wrap:wrap;">
       <div class="pimg">${p.imageUri?`<img src="${esc(p.imageUri)}" class="pimg">`:'📷'}</div>
-      <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div>
+      <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?ucode(p.supplierId):'إدارة'}</div>
       ${p.descriptionAr?`<div class="pm">${esc(p.descriptionAr)}</div>`:''}</div>
       <div class="row-actions" style="width:100%;"><button class="btn green sm" onclick="admApprove('${p.id}')">✅ موافقة</button>
       <button class="btn red sm" onclick="admReject('${p.id}')">✕ رفض</button></div></div>`).join('');
@@ -1095,7 +1097,7 @@
     el.innerHTML=list.map(u=>`<div class="ucard"><div class="urow">
       <div><b>${esc(u.name||'—')}</b> <span class="rolepill">${ROLE_AR[u.role]||u.role||'عميل'}</span>${u.verified?' <span class="rolepill" style="background:#05966922;color:#059669;">✅ موثّق</span>':''}
       <div class="pm" style="color:var(--muted);font-size:13px;margin-top:3px;">${u.phone?'📞 '+u.phone:''}${esc(u.email?' · '+u.email:'')}</div>
-      <div class="ucode" onclick="copyTxt('${String(u.id).slice(-6).toUpperCase()}')">🔑 الرمز: ${String(u.id).slice(-6).toUpperCase()}</div></div>
+      <div class="ucode" onclick="copyTxt('${ucode(u.id)}')">🔑 الرمز: ${ucode(u.id)}</div></div>
       <span class="pstatus" style="background:${u.active!==false?'#05966922':'#dc262622'};color:${u.active!==false?'#059669':'#dc2626'}">${u.active!==false?'نشط':'موقوف'}</span>
     </div>
       <div class="row-actions">
@@ -1143,7 +1145,7 @@
     const doneSvc=admServices.filter(s=>s.status==='done');
     let svcComm=0, svcTotal=0;
     doneSvc.forEach(s=>{ const t=(s.price||0)+(s.partsCost||0); svcTotal+=t; svcComm+=commissionAmt(s.price||0, cfgCommission.serviceCommission); });
-    const supName=(sid)=>{ if(sid==='__admin__')return 'منتجات الإدارة'; const u=admUsers.find(x=>x.id===sid); return u?(u.name||u.phone||String(sid).slice(-6)):String(sid).slice(-6).toUpperCase(); };
+    const supName=(sid)=>{ if(sid==='__admin__')return 'منتجات الإدارة'; const u=admUsers.find(x=>x.id===sid); return u?(u.name||u.phone||ucode(sid)):ucode(sid); };
     const card=(t,v,c)=>`<div class="irow"><b>${t}</b><span style="color:${c||'var(--primary)'};font-weight:800;font-size:16px;">${v.toLocaleString()} ر.ي</span></div>`;
     el.innerHTML=`<div class="ibox">
       ${card('إجمالي المبيعات المسلَّمة', sales, 'var(--text)')}
@@ -1402,8 +1404,8 @@
   }
   function exportCsv(kind){
     let rows=[];
-    if(kind==='users'){ rows=[['الاسم','الرقم','البريد','الدور','الرمز','الحالة'], ...admUsers.map(u=>[u.name||'',u.phone||'',u.email||'',(ROLE_AR[u.role]||u.role||'عميل'),String(u.id).slice(-6).toUpperCase(),u.active!==false?'نشط':'موقوف'])]; }
-    else if(kind==='products'){ rows=[['المنتج','السعر','الحالة','المورد'], ...admAllProducts.map(p=>[p.nameAr||'',p.price||0,(PSTAT[p.status]?PSTAT[p.status].t:p.status),p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'])]; }
+    if(kind==='users'){ rows=[['الاسم','الرقم','البريد','الدور','الرمز','الحالة'], ...admUsers.map(u=>[u.name||'',u.phone||'',u.email||'',(ROLE_AR[u.role]||u.role||'عميل'),ucode(u.id),u.active!==false?'نشط':'موقوف'])]; }
+    else if(kind==='products'){ rows=[['المنتج','السعر','الحالة','المورد'], ...admAllProducts.map(p=>[p.nameAr||'',p.price||0,(PSTAT[p.status]?PSTAT[p.status].t:p.status),p.supplierId?ucode(p.supplierId):'إدارة'])]; }
     else if(kind==='orders'){ rows=[['المنتج','السعر','الشحن','الحالة','الهاتف','التاريخ'], ...admOrders.map(o=>[o.productName||'',o.price||0,o.deliveryFee||0,(ORDER_STATUS[o.status]?ORDER_STATUS[o.status].t:o.status),o.phone||'',fmtDate(o.createdAt)])]; }
     else if(kind==='services'){ rows=[['المركز','العطل','التكلفة','الحالة','الهاتف','التاريخ'], ...admServices.map(s=>[s.centerName||'',s.problem||'',(s.price||0)+(s.partsCost||0),(SVC_STATUS[s.status]?SVC_STATUS[s.status].t:s.status),s.customerPhone||'',fmtDate(s.createdAt)])]; }
     if(rows.length<=1){ toast('لا بيانات للتصدير'); return; }
@@ -1418,7 +1420,7 @@
     const header = ['الاسم','الرقم','البريد','الدور','الرمز','الحالة'];
     const rows = admUsers.map(u=>[
       u.name||'', u.phone||'', u.email||'', (ROLE_AR[u.role]||u.role||'عميل'),
-      String(u.id).slice(-6).toUpperCase(), (u.active!==false?'نشط':'موقوف')
+      ucode(u.id), (u.active!==false?'نشط':'موقوف')
     ].map(esc).join(','));
     const csv = '﻿' + [header.map(esc).join(','), ...rows].join('\r\n');
     const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
@@ -1461,7 +1463,7 @@
       const st=PSTAT[p.status]||{t:p.status,c:'#888'};
       return `<div class="pcard" style="flex-wrap:wrap;">
         <div class="pimg">${p.imageUri?`<img src="${esc(p.imageUri)}" class="pimg">`:'📷'}</div>
-        <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?String(p.supplierId).slice(-6).toUpperCase():'إدارة'}</div></div>
+        <div class="pinfo"><b>${esc(p.nameAr||'')}</b><div class="pm">${(p.price||0).toLocaleString()} ر.ي · مورد: ${p.supplierId?ucode(p.supplierId):'إدارة'}</div></div>
         <span class="pstatus" style="background:${st.c}22;color:${st.c}">${st.t}</span>
         <div class="row-actions" style="width:100%;"><button class="btn red sm" onclick="admDeleteProduct('${p.id}','${esc((p.nameAr||'').replace(/'/g,''))}')">🗑️ حذف المنتج</button></div>
       </div>`;
@@ -1593,7 +1595,9 @@
     const o=centerServices.find(x=>x.id===id); if(!o) return;
     const code=prompt('أدخل كود الاستلام الذي يعرضه العميل:'); if(code===null) return;
     if(code.trim()!==o.returnCode){ toast('كود الاستلام غير صحيح'); return; }
-    try{ await db.collection('serviceOrders').doc(id).update({status:'done', doneAt:Date.now()}); toast('تم تسليم الجهاز ✅'); }
+    // رفض العميل التكلفة → إرجاع بلا احتساب (يبقى rejected)؛ الموافَق فقط يصبح done ويُحتسب.
+    const patch = o.status==='rejected' ? {returnedAt:Date.now()} : {status:'done', doneAt:Date.now()};
+    try{ await db.collection('serviceOrders').doc(id).update(patch); toast(o.status==='rejected'?'أُرجع الجهاز (بلا احتساب) ✅':'تم تسليم الجهاز ✅'); }
     catch(e){ toast('تعذّرت العملية'); }
   }
 
