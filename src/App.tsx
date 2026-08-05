@@ -3,6 +3,7 @@ import { ShoppingBag, Search, User, LogOut } from 'lucide-react';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Meshkilati from './pages/Meshkilati';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 function Navbar() {
@@ -67,6 +68,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/ai" element={<Meshkilati />} />
           </Routes>
         </main>
 
