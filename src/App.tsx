@@ -1,31 +1,6 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { ShoppingBag, Search, User, ShieldAlert, Star } from 'lucide-react';
-
-// Temporary components for preview
-const Home = () => (
-  <div className="p-8">
-    <div className="bg-primary/10 border border-primary/20 rounded-2xl p-8 text-center mb-8">
-      <h1 className="text-3xl font-bold text-primary mb-4">مرحباً بك في سماء فون</h1>
-      <p className="text-muted text-lg">النسخة الجديدة كلياً من المتجر الإلكتروني تحت التطوير 🚀</p>
-    </div>
-
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {[
-        { title: 'المنتجات', icon: ShoppingBag, color: 'text-blue-500', bg: 'bg-blue-50' },
-        { title: 'البحث المتقدم', icon: Search, color: 'text-purple-500', bg: 'bg-purple-50' },
-        { title: 'مشكلتي (AI)', icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-50' },
-        { title: 'المكافآت', icon: Star, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-      ].map((feat, i) => (
-        <div key={i} className="bg-card border border-border rounded-xl p-6 flex flex-col items-center justify-center gap-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-          <div className={`${feat.bg} ${feat.color} p-4 rounded-full group-hover:scale-110 transition-transform`}>
-            <feat.icon size={24} />
-          </div>
-          <span className="font-semibold text-text">{feat.title}</span>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+import { ShoppingBag, Search, User } from 'lucide-react';
+import Home from './pages/Home';
 
 function App() {
   return (
@@ -68,6 +43,22 @@ function App() {
             <Route path="/" element={<Home />} />
           </Routes>
         </main>
+
+        {/* Footer */}
+        <footer className="bg-white border-t border-border py-8 mt-12">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <div className="text-primary font-bold text-2xl mb-4">📱 سماء فون</div>
+            <p className="text-muted mb-6">متجر الجوالات والإلكترونيات الأول</p>
+            <div className="flex items-center justify-center gap-6 text-sm font-semibold text-muted">
+              <Link to="/privacy" className="hover:text-primary transition-colors">سياسة الخصوصية</Link>
+              <Link to="/terms" className="hover:text-primary transition-colors">الشروط والأحكام</Link>
+              <a href="mailto:a.alfeel50@gmail.com" className="hover:text-primary transition-colors">اتصل بنا</a>
+            </div>
+            <div className="mt-8 text-xs text-muted/60">
+              جميع الحقوق محفوظة &copy; {new Date().getFullYear()} سماء فون
+            </div>
+          </div>
+        </footer>
       </div>
     </BrowserRouter>
   );
