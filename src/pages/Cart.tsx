@@ -40,8 +40,19 @@ export default function Cart() {
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, 'orders'), orderData);
+      const docRef = await addDoc(collection(db, 'orders'), orderData);
       
+      // Trigger notification for admins
+      try {
+        await fetch('/api/notify-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: docRef.id, event: 'new' })
+        });
+      } catch (notifyErr) {
+        console.error('Failed to send notification:', notifyErr);
+      }
+
       setSuccess(true);
       clearCart();
     } catch (err: any) {
