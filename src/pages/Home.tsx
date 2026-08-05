@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, doc, getDoc, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ShoppingBag, Search, Zap } from 'lucide-react';
+import { useCart } from '../context/CartContext';
 
 interface Product {
   id: string;
@@ -18,6 +19,7 @@ interface Category {
 }
 
 export default function Home() {
+  const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCat, setActiveCat] = useState<string>('all');
@@ -193,6 +195,7 @@ export default function Home() {
                     {product.price?.toLocaleString()} <span className="text-xs font-bold">ر.ي</span>
                   </div>
                   <button 
+                    onClick={() => addToCart(product)}
                     disabled={product.inStock === false}
                     className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-colors disabled:opacity-50 disabled:hover:bg-primary/10 disabled:hover:text-primary"
                   >

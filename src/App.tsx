@@ -4,7 +4,9 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Meshkilati from './pages/Meshkilati';
+import Cart from './pages/Cart';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CartProvider, useCart } from './context/CartContext';
 
 function Navbar() {
   const { user, logout } = useAuth();
@@ -28,10 +30,15 @@ function Navbar() {
           <button className="p-2 text-muted hover:text-primary transition-colors">
             <Search size={20} />
           </button>
-          <button className="p-2 text-muted hover:text-primary transition-colors relative">
+          
+          <Link to="/cart" className="p-2 text-muted hover:text-primary transition-colors relative">
             <ShoppingBag size={20} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+            {useCart().totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-5 h-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow-sm">
+                {useCart().totalItems}
+              </span>
+            )}
+          </Link>
 
           {user ? (
             <div className="flex items-center gap-3">
@@ -58,19 +65,21 @@ function Navbar() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <div className="min-h-screen flex flex-col">
-          <Navbar />
+      <CartProvider>
+        <BrowserRouter>
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
 
-        {/* Main Content */}
-        <main className="flex-1 max-w-7xl mx-auto w-full">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/ai" element={<Meshkilati />} />
-          </Routes>
-        </main>
+            {/* Main Content */}
+            <main className="flex-1 max-w-7xl mx-auto w-full">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/ai" element={<Meshkilati />} />
+                <Route path="/cart" element={<Cart />} />
+              </Routes>
+            </main>
 
         {/* Footer */}
         <footer className="bg-white border-t border-border py-8 mt-12">
@@ -87,8 +96,9 @@ function App() {
             </div>
           </div>
         </footer>
-      </div>
-    </BrowserRouter>
+          </div>
+        </BrowserRouter>
+      </CartProvider>
     </AuthProvider>
   );
 }
