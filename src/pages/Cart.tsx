@@ -63,16 +63,45 @@ export default function Cart() {
   };
 
   if (success) {
+    const whatsappNumber = "967783454544";
+    const orderMessage = `مرحباً سماء فون، لقد قمت بطلب جديد!
+    
+تفاصيل الطلب:
+${items.map(item => `- ${item.nameAr} (الكمية: ${item.quantity})`).join('\n')}
+
+المجموع الإجمالي: ${totalPrice.toLocaleString()} ر.ي
+العنوان: ${address}
+رقم التواصل: ${phone}
+
+الرجاء تأكيد الطلب.`;
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
         <div className="bg-green-50 text-green-500 w-24 h-24 rounded-full flex items-center justify-center mb-6">
           <CheckCircle2 size={48} />
         </div>
         <h1 className="text-3xl font-black text-text mb-2">تم تأكيد طلبك بنجاح! 🎉</h1>
-        <p className="text-muted font-medium mb-8 max-w-md">
-          شكراً لتسوقك من سماء فون. سيقوم فريقنا بالتواصل معك قريباً على الرقم المرفق لتأكيد التوصيل.
+        <p className="text-muted font-medium mb-6 max-w-md">
+          شكراً لتسوقك من سماء فون. تم حفظ طلبك في النظام.
         </p>
-        <Link to="/" className="bg-primary text-white font-bold px-8 py-3 rounded-2xl hover:bg-primaryDark transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40">
+        
+        <div className="bg-green-50 border border-green-100 rounded-2xl p-6 mb-8 max-w-md w-full">
+          <h3 className="font-bold text-green-800 mb-2">لضمان سرعة التوصيل 🚀</h3>
+          <p className="text-sm text-green-700 mb-4">
+            نوصي بإرسال نسخة من طلبك مباشرة عبر الواتساب لفريق المبيعات ليتم تجهيزه فوراً.
+          </p>
+          <a 
+            href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(orderMessage)}`}
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-[#25D366] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#20bd5a] transition-all shadow-lg shadow-green-500/30"
+          >
+            <Phone size={20} />
+            إرسال الطلب عبر واتساب
+          </a>
+        </div>
+
+        <Link to="/" className="text-primary font-bold hover:underline">
           العودة للمتجر
         </Link>
       </div>
