@@ -1,21 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { Trash2, Plus, Minus, ShoppingBag, MapPin, Phone, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ELIGIBLE_ROLES_FOR_SPECIAL_PRICE } from '../lib/constants';
+
+const FALLBACK_WHATSAPP = '967783454544';
 
 export default function Cart() {
   const { items, updateQuantity, removeFromCart, totalItems, totalPrice, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const navigate = useNavigate();
+
+  const isEligibleForSpecialPrice = userData?.role && ELIGIBLE_ROLES_FOR_SPECIAL_PRICE.includes(userData.role);
 
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState(FALLBACK_WHATSAPP);
+
+  // جلب رقم واتساب من Firestore
+  useEffect(() => {
+    const fetchContact = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'contact'));
+        if (snap.exists()) {
+          const num = snap.data()?.whatsappNumber;
+          if (num && String(num).trim()) {
+            setWhatsappNumber(String(num).trim());
+          }
+        }
+      } catch {
+        // الإخفاق صامت — يُستخدم الرقم الاحتياطي
+      }
+    };
+    fetchContact();
+  }, []);
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +87,6 @@ export default function Cart() {
   };
 
   if (success) {
-    const whatsappNumber = "967783454544";
     const orderMessage = `مرحباً سماء فون، لقد قمت بطلب جديد!
     
 تفاصيل الطلب:
@@ -148,8 +171,21 @@ ${items.map(item => `- ${item.nameAr} (الكمية: ${item.quantity})`).join('\
               
               <div className="flex-1">
                 <h3 className="font-bold text-text text-lg line-clamp-1">{item.nameAr}</h3>
-                <div className="text-primary font-black mt-1">
-                  {item.price.toLocaleString()} <span className="text-xs">ر.ي</span>
+                <div className="flex flex-col mt-1">
+                  {isEligibleForSpecialPrice && item.specialPrice ? (
+                    <>
+                      <div className="text-red-600 font-black">
+                        {item.specialPrice.toLocaleString()} <span className="text-xs">ر.ي</span>
+                      </div>
+                      <div className="text-gray-400 font-bold text-xs line-through">
+                        {item.price.toLocaleString()} ر.ي
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-primary font-black">
+                      {item.price.toLocaleString()} <span className="text-xs">ر.ي</span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-4 mt-3">

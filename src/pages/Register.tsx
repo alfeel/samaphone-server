@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Mail, Lock, User as UserIcon, Loader2, ArrowRight } from 'lucide-react';
 
@@ -20,16 +20,24 @@ export default function Register() {
     
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const { user } = userCredential;
+
+      // Update Firebase Auth display name
+      await updateProfile(user, { displayName: name });
       
-      // Save extra user data in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
+      // Save user data in Firestore — schema متوافق مع التطبيق
+      await setDoc(doc(db, 'users', user.uid), {
+        displayName: name,
         name,
         email,
         phone: '',
-        createdAt: new Date().toISOString(),
         role: 'user',
         walletBalance: 0,
-        rewardsPoints: 0
+        rewardsPoints: 0,
+        pushToken: null,
+        country: '',
+        createdAt: serverTimestamp(),
+        lastSeenAt: Date.now(),
       });
 
       navigate('/');

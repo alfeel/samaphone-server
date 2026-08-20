@@ -82,7 +82,7 @@ export default function Meshkilati() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-gray-50/50">
+    <div className="flex flex-col h-[calc(100dvh-4rem)] bg-gray-50/50">
       <div className="bg-white border-b border-border py-4 px-6 flex items-center gap-4">
         <div className="bg-primary/10 p-3 rounded-full text-primary">
           <Bot size={24} />
@@ -103,14 +103,14 @@ export default function Meshkilati() {
                 {msg.sender === 'user' ? <User size={20} /> : <Bot size={20} />}
               </div>
               
-              <div className={`p-4 rounded-2xl ${
+              <div className={`p-4 rounded-2xl break-words ${
                 msg.sender === 'user' 
                   ? 'bg-primary text-white rounded-tl-none' 
                   : msg.isError 
                     ? 'bg-red-50 text-red-800 border border-red-100 rounded-tr-none'
                     : 'bg-white border border-border text-text rounded-tr-none shadow-sm'
               }`}>
-                <div className="whitespace-pre-wrap leading-relaxed font-medium text-sm md:text-base">
+                <div className="whitespace-pre-wrap leading-relaxed font-medium text-sm md:text-base break-words">
                   {msg.text}
                 </div>
                 

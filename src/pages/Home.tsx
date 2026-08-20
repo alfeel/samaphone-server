@@ -3,11 +3,14 @@ import { collection, query, where, getDocs, doc, getDoc, DocumentData, QueryDocu
 import { db } from '../lib/firebase';
 import { ShoppingBag, Search, Zap } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { ELIGIBLE_ROLES_FOR_SPECIAL_PRICE } from '../lib/constants';
 
 interface Product {
   id: string;
   nameAr: string;
   price: number;
+  specialPrice?: number;
   imageUri?: string;
   inStock?: boolean;
   categoryId: string;
@@ -20,6 +23,7 @@ interface Category {
 
 export default function Home() {
   const { addToCart } = useCart();
+  const { userData } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCat, setActiveCat] = useState<string>('all');
@@ -88,11 +92,13 @@ export default function Home() {
     return matchCat && matchSearch;
   });
 
+  const isEligibleForSpecialPrice = userData?.role && ELIGIBLE_ROLES_FOR_SPECIAL_PRICE.includes(userData.role);
+
   return (
     <div className="p-4 md:p-8 space-y-8">
       
       {/* Offers & Ads Hero Slider */}
-      <div className="relative rounded-3xl overflow-hidden max-w-7xl mx-auto h-[250px] md:h-[350px] shadow-2xl">
+      <div className="relative rounded-3xl overflow-hidden max-w-7xl mx-auto min-h-[250px] md:min-h-[350px] aspect-[16/9] md:aspect-[21/9] shadow-2xl">
         {banners.map((banner, index) => (
           <div 
             key={banner.id}
@@ -112,8 +118,8 @@ export default function Home() {
             </div>
             
             {/* Decorative background circles */}
-            <div className="absolute -left-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-            <div className="absolute right-10 -bottom-20 w-48 h-48 bg-black/20 rounded-full blur-2xl"></div>
+            <div className="absolute -left-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute right-10 -bottom-20 w-48 h-48 bg-black/20 rounded-full blur-2xl pointer-events-none"></div>
           </div>
         ))}
         
@@ -191,8 +197,21 @@ export default function Home() {
                 </h3>
                 
                 <div className="flex items-center justify-between mt-auto">
-                  <div className="text-primary font-black text-lg">
-                    {product.price?.toLocaleString()} <span className="text-xs font-bold">ر.ي</span>
+                  <div className="flex flex-col">
+                    {isEligibleForSpecialPrice && product.specialPrice ? (
+                      <>
+                        <div className="text-red-600 font-black text-lg">
+                          {product.specialPrice.toLocaleString()} <span className="text-xs font-bold">ر.ي</span>
+                        </div>
+                        <div className="text-gray-400 font-bold text-sm line-through">
+                          {product.price.toLocaleString()} ر.ي
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-primary font-black text-lg">
+                        {product.price?.toLocaleString()} <span className="text-xs font-bold">ر.ي</span>
+                      </div>
+                    )}
                   </div>
                   <button 
                     onClick={() => addToCart(product)}

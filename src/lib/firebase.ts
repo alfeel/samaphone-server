@@ -4,12 +4,12 @@ import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC4lo_pPVVA_ixAIybhNKwlLbReKr308eQ",
-  authDomain: "sama-phone.firebaseapp.com",
-  projectId: "sama-phone",
-  storageBucket: "sama-phone.firebasestorage.app",
-  messagingSenderId: "887727148149",
-  appId: "1:887727148149:android:e74244d6a6ed5092eabc3c"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
