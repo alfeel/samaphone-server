@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, doc, getDoc, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ShoppingBag, Search, Zap } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -64,39 +64,43 @@ export default function Home() {
   }, [dbBanners]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch banners
-        const banDoc = await getDoc(doc(db, 'settings', 'banners'));
-        if (banDoc.exists() && banDoc.data().items?.length > 0) {
-          setDbBanners(banDoc.data().items);
-        }
-
-        // Fetch categories
-        const catDoc = await getDoc(doc(db, 'settings', 'categories'));
-        if (catDoc.exists()) {
-          setCategories([{ id: 'all', nameAr: 'الكل' }, ...(catDoc.data().items || [])]);
-        } else {
-          setCategories([
-            { id: 'all', nameAr: 'الكل' },
-            { id: 'phones', nameAr: 'جوالات' },
-            { id: 'accessories', nameAr: 'إكسسوارات' },
-            { id: 'spare-parts', nameAr: 'قطع غيار' }
-          ]);
-        }
-
-        // Fetch Products
-        const q = query(collection(db, 'products'), where('status', '==', 'approved'));
-        const querySnapshot = await getDocs(q);
-        const prods = querySnapshot.docs.map((docSnap: QueryDocumentSnapshot<DocumentData>) => ({ id: docSnap.id, ...docSnap.data() } as Product));
-        setProducts(prods);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
+    // 1. Fetch Banners
+    const unsubBanners = onSnapshot(doc(db, 'settings', 'banners'), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().items?.length > 0) {
+        setDbBanners(docSnap.data().items);
       }
+    });
+
+    // 2. Fetch Categories
+    const unsubCategories = onSnapshot(doc(db, 'settings', 'categories'), (docSnap) => {
+      if (docSnap.exists()) {
+        setCategories([{ id: 'all', nameAr: 'الكل' }, ...(docSnap.data().items || [])]);
+      } else {
+        setCategories([
+          { id: 'all', nameAr: 'الكل' },
+          { id: 'phones', nameAr: 'جوالات' },
+          { id: 'accessories', nameAr: 'إكسسوارات' },
+          { id: 'spare-parts', nameAr: 'قطع غيار' }
+        ]);
+      }
+    });
+
+    // 3. Fetch Products
+    const q = query(collection(db, 'products'), where('status', '==', 'approved'));
+    const unsubProducts = onSnapshot(q, (snapshot) => {
+      const prods = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+      setProducts(prods);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching data:', error);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubBanners();
+      unsubCategories();
+      unsubProducts();
     };
-    fetchData();
   }, []);
 
   const filteredProducts = products.filter(p => {

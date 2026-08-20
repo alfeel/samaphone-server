@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, doc, getDoc, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ShoppingBag, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -42,27 +42,32 @@ export default function Store() {
   const isEligibleForSpecialPrice = userData?.role && ELIGIBLE_ROLES_FOR_SPECIAL_PRICE.includes(userData.role);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const catDoc = await getDoc(doc(db, 'settings', 'categories'));
-        if (catDoc.exists()) {
-          const items = catDoc.data().items || [];
-          setCategories([{ id: 'all', nameAr: 'الكل', emoji: '🛍️' }, ...items]);
-        }
-        const q = query(collection(db, 'products'), where('status', '==', 'approved'));
-        const querySnapshot = await getDocs(q);
-        const prods = querySnapshot.docs.map((docSnap: QueryDocumentSnapshot<DocumentData>) => ({
-          id: docSnap.id,
-          ...docSnap.data()
-        } as Product));
-        setProducts(prods);
-      } catch (error) {
-        console.error('Error fetching store data:', error);
-      } finally {
-        setLoading(false);
+    // 1. Fetch Categories
+    const unsubCategories = onSnapshot(doc(db, 'settings', 'categories'), (docSnap) => {
+      if (docSnap.exists()) {
+        const items = docSnap.data().items || [];
+        setCategories([{ id: 'all', nameAr: 'الكل', emoji: '🛍️' }, ...items]);
       }
+    });
+
+    // 2. Fetch Products
+    const q = query(collection(db, 'products'), where('status', '==', 'approved'));
+    const unsubProducts = onSnapshot(q, (snapshot) => {
+      const prods = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      } as Product));
+      setProducts(prods);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching store data:', error);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubCategories();
+      unsubProducts();
     };
-    fetchData();
   }, []);
 
   const handleAddToCart = (product: Product) => {
