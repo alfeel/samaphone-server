@@ -11,6 +11,16 @@ import Services from './pages/Services';
 import ProductDetail from './pages/ProductDetail';
 import AdminProducts from './pages/AdminProducts';
 import AdminUsers from './pages/AdminUsers';
+import AdminOrders from './pages/AdminOrders';
+import AdminServiceOrders from './pages/AdminServiceOrders';
+import AdminSettings from './pages/AdminSettings';
+import AdminWorkItems from './pages/AdminWorkItems';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminFinance from './pages/AdminFinance';
+import AdminReports from './pages/AdminReports';
+import AdminNotifications from './pages/AdminNotifications';
+import AdminOffers from './pages/AdminOffers';
+import AdminRewards from './pages/AdminRewards';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -47,11 +57,24 @@ function Navbar() {
           <Link to="/store" className="hover:text-primary transition-colors">المتجر</Link>
           <Link to="/services" className="hover:text-primary transition-colors">الخدمات</Link>
           <Link to="/ai" className="hover:text-primary transition-colors">مشكلتي</Link>
-          {user && (userData?.role === 'admin' || userData?.role === 'supplier') && (
-            <Link to="/admin/products" className="text-red-500 font-bold hover:text-red-700 transition-colors">إدارة المنتجات</Link>
-          )}
           {user && userData?.role === 'admin' && (
-            <Link to="/admin/users" className="text-blue-500 font-bold hover:text-blue-700 transition-colors">إدارة المستخدمين</Link>
+            <>
+              <Link to="/admin" className="text-purple-600 font-bold hover:text-purple-800 transition-colors">الرئيسية</Link>
+              <Link to="/admin/orders" className="text-orange-500 font-bold hover:text-orange-700 transition-colors">الطلبات</Link>
+              <Link to="/admin/products" className="text-red-500 font-bold hover:text-red-700 transition-colors">المنتجات</Link>
+              <Link to="/admin/finance" className="text-green-600 font-bold hover:text-green-800 transition-colors">المالية</Link>
+              <Link to="/admin/reports" className="text-cyan-600 font-bold hover:text-cyan-800 transition-colors">التقارير</Link>
+              <div className="relative group">
+                <span className="text-gray-600 font-bold hover:text-gray-800 transition-colors cursor-pointer flex items-center gap-1">المزيد</span>
+                <div className="absolute top-full right-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-2 flex flex-col gap-2 min-w-[150px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <Link to="/admin/services" className="hover:bg-gray-50 p-2 rounded-lg text-sm font-bold text-gray-700">طلبات الصيانة</Link>
+                  <Link to="/admin/notifications" className="hover:bg-gray-50 p-2 rounded-lg text-sm font-bold text-gray-700">الإشعارات</Link>
+                  <Link to="/admin/offers" className="hover:bg-gray-50 p-2 rounded-lg text-sm font-bold text-gray-700">العروض</Link>
+                  <Link to="/admin/rewards" className="hover:bg-gray-50 p-2 rounded-lg text-sm font-bold text-gray-700">المكافآت</Link>
+                  <Link to="/admin/settings" className="hover:bg-gray-50 p-2 rounded-lg text-sm font-bold text-gray-700">الإعدادات</Link>
+                </div>
+              </div>
+            </>
           )}
         </nav>
 
@@ -96,11 +119,22 @@ function Navbar() {
             <Link to="/store" className="hover:text-primary hover:bg-gray-50 p-2 rounded-lg transition-colors">المتجر</Link>
             <Link to="/services" className="hover:text-primary hover:bg-gray-50 p-2 rounded-lg transition-colors">الخدمات</Link>
             <Link to="/ai" className="hover:text-primary hover:bg-gray-50 p-2 rounded-lg transition-colors">مشكلتي</Link>
-            {user && (userData?.role === 'admin' || userData?.role === 'supplier') && (
+            {user && userData?.role === 'supplier' && (
               <Link to="/admin/products" className="text-red-500 font-bold hover:bg-red-50 p-2 rounded-lg transition-colors">إدارة المنتجات</Link>
             )}
             {user && userData?.role === 'admin' && (
-              <Link to="/admin/users" className="text-blue-500 font-bold hover:bg-blue-50 p-2 rounded-lg transition-colors">إدارة المستخدمين</Link>
+              <>
+                <Link to="/admin" className="text-purple-600 font-bold hover:bg-purple-50 p-2 rounded-lg transition-colors">لوحة التحكم الأساسية</Link>
+                <Link to="/admin/finance" className="text-green-600 font-bold hover:bg-green-50 p-2 rounded-lg transition-colors">المالية والتسويات</Link>
+                <Link to="/admin/reports" className="text-cyan-600 font-bold hover:bg-cyan-50 p-2 rounded-lg transition-colors">التقارير التحليلية</Link>
+                <Link to="/admin/orders" className="text-orange-500 font-bold hover:bg-orange-50 p-2 rounded-lg transition-colors">إدارة الطلبات</Link>
+                <Link to="/admin/products" className="text-red-500 font-bold hover:bg-red-50 p-2 rounded-lg transition-colors">إدارة المنتجات</Link>
+                <Link to="/admin/notifications" className="text-pink-500 font-bold hover:bg-pink-50 p-2 rounded-lg transition-colors">إرسال الإشعارات</Link>
+                <Link to="/admin/offers" className="text-yellow-600 font-bold hover:bg-yellow-50 p-2 rounded-lg transition-colors">العروض والكوبونات</Link>
+                <Link to="/admin/rewards" className="text-indigo-600 font-bold hover:bg-indigo-50 p-2 rounded-lg transition-colors">نقاط المكافآت</Link>
+                <Link to="/admin/services" className="text-blue-500 font-bold hover:bg-blue-50 p-2 rounded-lg transition-colors">طلبات الصيانة</Link>
+                <Link to="/admin/settings" className="text-gray-600 font-bold hover:bg-gray-100 p-2 rounded-lg transition-colors">الإعدادات والأقسام</Link>
+              </>
             )}
           </nav>
         </div>
@@ -124,8 +158,18 @@ function NavbarWrapper() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/ai" element={<Meshkilati />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={['admin']}><AdminFinance /></ProtectedRoute>} />
+          <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['admin']}><AdminReports /></ProtectedRoute>} />
           <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['admin', 'supplier']}><AdminProducts /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+          <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={['admin']}><AdminOrders /></ProtectedRoute>} />
+          <Route path="/admin/services" element={<ProtectedRoute allowedRoles={['admin', 'center']}><AdminServiceOrders /></ProtectedRoute>} />
+          <Route path="/admin/notifications" element={<ProtectedRoute allowedRoles={['admin']}><AdminNotifications /></ProtectedRoute>} />
+          <Route path="/admin/offers" element={<ProtectedRoute allowedRoles={['admin']}><AdminOffers /></ProtectedRoute>} />
+          <Route path="/admin/rewards" element={<ProtectedRoute allowedRoles={['admin']}><AdminRewards /></ProtectedRoute>} />
+          <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />
+          <Route path="/admin/work-items" element={<ProtectedRoute allowedRoles={['admin']}><AdminWorkItems /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

@@ -30,6 +30,7 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeBanner, setActiveBanner] = useState(0);
+  const [dbBanners, setDbBanners] = useState<any[]>([]);
 
   const banners = [
     {
@@ -57,19 +58,31 @@ export default function Home() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setActiveBanner((prev) => (prev + 1) % banners.length);
+      setActiveBanner((prev) => (prev + 1) % (dbBanners.length > 0 ? dbBanners.length : banners.length));
     }, 5000);
     return () => clearInterval(timer);
-  }, [banners.length]);
+  }, [dbBanners]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch Categories
+        // Fetch banners
+        const banDoc = await getDoc(doc(db, 'settings', 'banners'));
+        if (banDoc.exists() && banDoc.data().items?.length > 0) {
+          setDbBanners(banDoc.data().items);
+        }
+
+        // Fetch categories
         const catDoc = await getDoc(doc(db, 'settings', 'categories'));
         if (catDoc.exists()) {
-          const items = catDoc.data().items || [];
-          setCategories([{ id: 'all', nameAr: 'الكل' }, ...items]);
+          setCategories([{ id: 'all', nameAr: 'الكل' }, ...(catDoc.data().items || [])]);
+        } else {
+          setCategories([
+            { id: 'all', nameAr: 'الكل' },
+            { id: 'phones', nameAr: 'جوالات' },
+            { id: 'accessories', nameAr: 'إكسسوارات' },
+            { id: 'spare-parts', nameAr: 'قطع غيار' }
+          ]);
         }
 
         // Fetch Products
@@ -97,39 +110,33 @@ export default function Home() {
   return (
     <div className="p-4 md:p-8 space-y-8">
       
-      {/* Offers & Ads Hero Slider */}
-      <div className="relative rounded-3xl overflow-hidden max-w-7xl mx-auto min-h-[250px] md:min-h-[350px] aspect-[16/9] md:aspect-[21/9] shadow-2xl">
-        {banners.map((banner, index) => (
-          <div 
-            key={banner.id}
-            className={`absolute inset-0 ${banner.bg} text-white transition-opacity duration-700 ease-in-out flex items-center px-8 md:px-16 ${
-              index === activeBanner ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
+      {/* Banners */}
+      <div className="relative overflow-hidden rounded-3xl h-[200px] md:h-[300px] shadow-sm group">
+        {(dbBanners.length > 0 ? dbBanners : banners).map((banner, index) => (
+          <div
+            key={banner.id || index}
+            className={`absolute inset-0 transition-opacity duration-1000 ${index === activeBanner ? 'opacity-100' : 'opacity-0'} ${banner.bg || 'bg-gray-800'}`}
           >
-            <div className="max-w-xl z-10">
-              <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold mb-4">
-                <Zap size={14} className="text-yellow-400" /> {banner.tag}
+            {banner.imageUri && (
+              <img src={banner.imageUri} alt={banner.title} className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay" />
+            )}
+            <div className="relative h-full p-8 md:p-12 flex flex-col justify-center max-w-2xl">
+              <span className="bg-white/20 text-white backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold w-max mb-3">
+                <Zap size={14} className="inline mr-1 text-yellow-400" /> {banner.tag}
               </span>
-              <h2 className="text-3xl md:text-5xl font-black mb-3 leading-tight drop-shadow-md">{banner.title}</h2>
-              <p className="text-white/80 font-medium md:text-lg mb-6">{banner.subtitle}</p>
-              <button className="bg-white text-gray-900 px-6 py-3 rounded-xl font-bold hover:scale-105 transition-transform shadow-lg">
-                تسوق الآن
-              </button>
+              <h2 className="text-3xl md:text-5xl font-black text-white mb-2 md:mb-4">{banner.title}</h2>
+              <p className="text-white/90 text-sm md:text-lg font-medium">{banner.subtitle}</p>
             </div>
-            
-            {/* Decorative background circles */}
-            <div className="absolute -left-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-            <div className="absolute right-10 -bottom-20 w-48 h-48 bg-black/20 rounded-full blur-2xl pointer-events-none"></div>
           </div>
         ))}
         
-        {/* Slider Controls */}
-        <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center gap-2">
-          {banners.map((_, idx) => (
-            <button 
-              key={idx}
-              onClick={() => setActiveBanner(idx)}
-              className={`w-2 h-2 rounded-full transition-all ${idx === activeBanner ? 'bg-white w-6' : 'bg-white/50'}`}
+        {/* Banner Controls */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+          {(dbBanners.length > 0 ? dbBanners : banners).map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setActiveBanner(index)}
+              className={`w-2 h-2 rounded-full transition-all ${index === activeBanner ? 'bg-white w-6' : 'bg-white/50'}`}
             />
           ))}
         </div>
