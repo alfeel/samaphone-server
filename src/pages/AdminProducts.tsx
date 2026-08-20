@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, getDocs, updateDoc, doc, query } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, updateDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { ShoppingBag, Loader2, Plus, AlertCircle, CheckCircle2, Edit2, Package } from 'lucide-react';
@@ -13,6 +13,7 @@ interface ProductData {
   categoryId: string;
   inStock: boolean;
   status: string;
+  supplierId?: string;
 }
 
 export default function AdminProducts() {
@@ -36,24 +37,24 @@ export default function AdminProducts() {
 
   const canAccess = user && (userData?.role === 'admin' || userData?.role === 'supplier');
 
-  const fetchProducts = async () => {
-    try {
-      const q = query(collection(db, 'products'));
-      const querySnapshot = await getDocs(q);
-      const prods = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as ProductData));
-      setProducts(prods);
-    } catch (err) {
-      console.error('Error fetching products:', err);
-    } finally {
-      setFetching(false);
-    }
-  };
-
   useEffect(() => {
     if (canAccess) {
-      fetchProducts();
+      const q = query(collection(db, 'products'), orderBy('nameAr', 'asc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const prods = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ProductData));
+        if (userData?.role === 'supplier') {
+          setProducts(prods.filter(p => p.supplierId === user?.uid));
+        } else {
+          setProducts(prods);
+        }
+        setFetching(false);
+      }, (err) => {
+        console.error('Error fetching products:', err);
+        setFetching(false);
+      });
+      return () => unsubscribe();
     }
-  }, [canAccess]);
+  }, [canAccess, userData?.role, user?.uid]);
 
   // Protect route
   if (!canAccess) {
@@ -81,7 +82,8 @@ export default function AdminProducts() {
         imageUri: formData.imageUri,
         categoryId: formData.categoryId,
         inStock: formData.inStock,
-        status: finalStatus
+        status: finalStatus,
+        supplierId: userData?.role === 'supplier' ? user?.uid : null
       };
 
       if (editingId) {
@@ -103,7 +105,6 @@ export default function AdminProducts() {
         inStock: true
       });
       setEditingId(null);
-      await fetchProducts(); // Refresh list
     } catch (err: any) {
       setError(err.message || 'حدث خطأ أثناء الحفظ');
     } finally {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { BarChart3, Users, Package, ShoppingBag, Loader2, AlertCircle, TrendingUp, Wallet } from 'lucide-react';
@@ -21,53 +21,40 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (isAdmin) {
-      fetchDashboardData();
-    }
-  }, [isAdmin]);
-
-  const fetchDashboardData = async () => {
-    try {
-      // 1. Fetch Users Count
-      const usersSnap = await getDocs(collection(db, 'users'));
-      const totalUsers = usersSnap.size;
-
-      // 2. Fetch Products Count
-      const productsSnap = await getDocs(collection(db, 'products'));
-      const totalProducts = productsSnap.size;
-
-      // 3. Fetch Orders & Revenue
-      const ordersSnap = await getDocs(collection(db, 'orders'));
-      let totalRevenue = 0;
-      let pendingOrders = 0;
-      
-      ordersSnap.forEach(doc => {
-        const order = doc.data();
-        if (order.status === 'delivered') totalRevenue += (order.total || 0);
-        if (order.status === 'pending') pendingOrders++;
-      });
-      const totalOrders = ordersSnap.size;
-
-      // 4. Fetch Recent Orders
-      let fetchedRecentOrders: any[] = [];
-      try {
-        const qRecent = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(5));
-        const recentSnap = await getDocs(qRecent);
-        fetchedRecentOrders = recentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch(e) {
-        // Fallback if missing index
+      // Real-time listener for orders
+      const ordersQ = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+      const unsubOrders = onSnapshot(ordersQ, (ordersSnap) => {
         const allOrders = ordersSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
         allOrders.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-        fetchedRecentOrders = allOrders.slice(0, 5);
-      }
+        
+        const totalOrders = allOrders.length;
+        const pendingOrders = allOrders.filter(o => o.status === 'pending').length;
+        const totalRevenue = allOrders
+          .filter(o => o.status === 'delivered')
+          .reduce((sum, o) => sum + (o.total || 0), 0);
+          
+        setStats(prev => ({ ...prev, totalOrders, pendingOrders, totalRevenue }));
+        setRecentOrders(allOrders.slice(0, 5));
+      });
 
-      setStats({ totalUsers, totalOrders, totalProducts, totalRevenue, pendingOrders });
-      setRecentOrders(fetchedRecentOrders);
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-    } finally {
-      setLoading(false);
+      // Real-time listener for products
+      const unsubProducts = onSnapshot(collection(db, 'products'), (snap) => {
+        setStats(prev => ({ ...prev, totalProducts: snap.size }));
+      });
+      
+      // Real-time listener for users
+      const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+        setStats(prev => ({ ...prev, totalUsers: snap.size }));
+        setLoading(false);
+      });
+
+      return () => {
+        unsubOrders();
+        unsubProducts();
+        unsubUsers();
+      };
     }
-  };
+  }, [isAdmin]);
 
   if (!isAdmin) {
     return (

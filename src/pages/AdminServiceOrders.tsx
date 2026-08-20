@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, updateDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { Wrench, Loader2, AlertCircle, XCircle } from 'lucide-react';
@@ -13,6 +13,7 @@ interface ServiceOrder {
   price?: number;
   deliveryCode?: string;
   createdAt: any;
+  assignedCenterId?: string;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -47,31 +48,25 @@ export default function AdminServiceOrders() {
 
   useEffect(() => {
     if (canAccess) {
-      fetchOrders();
+      const q = query(collection(db, 'service_orders'), orderBy('createdAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (snap) => {
+        const fetchedOrders = snap.docs.map(d => ({ id: d.id, ...d.data() } as ServiceOrder));
+        
+        if (userData?.role === 'center') {
+          setOrders(fetchedOrders.filter(o => o.assignedCenterId === user.uid));
+        } else {
+          setOrders(fetchedOrders);
+        }
+        setLoading(false);
+      }, (err) => {
+        console.error('Error fetching service orders:', err);
+        setError('تعذر جلب طلبات الصيانة');
+        setLoading(false);
+      });
+
+      return () => unsubscribe();
     }
   }, [canAccess]);
-
-  const fetchOrders = async () => {
-    try {
-      const q = query(collection(db, 'service_orders'), orderBy('createdAt', 'desc'));
-      const snap = await getDocs(q);
-      const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as ServiceOrder));
-      setOrders(fetched);
-    } catch (err: any) {
-      console.error('Error fetching service orders:', err);
-      if (err.message.includes('index')) {
-        const fallbackQ = query(collection(db, 'service_orders'));
-        const snap = await getDocs(fallbackQ);
-        const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() } as ServiceOrder));
-        fetched.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-        setOrders(fetched);
-      } else {
-        setError('تعذر جلب طلبات الصيانة');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const updateOrderStatus = async (order: ServiceOrder, newStatus: string) => {
     let updateData: any = { status: newStatus };
@@ -91,7 +86,6 @@ export default function AdminServiceOrders() {
     setUpdating(order.id);
     try {
       await updateDoc(doc(db, 'service_orders', order.id), updateData);
-      setOrders(orders.map(o => o.id === order.id ? { ...o, ...updateData } : o));
     } catch (err) {
       console.error('Error updating status:', err);
       alert('فشل تحديث حالة الطلب');

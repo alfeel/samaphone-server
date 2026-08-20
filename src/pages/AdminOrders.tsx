@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, updateDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, updateDoc, doc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { Package, Loader2, AlertCircle, XCircle } from 'lucide-react';
@@ -44,40 +44,25 @@ export default function AdminOrders() {
 
   useEffect(() => {
     if (isAdmin) {
-      fetchOrders();
+      const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (snap) => {
+        const fetchedOrders = snap.docs.map(d => ({ id: d.id, ...d.data() } as Order));
+        setOrders(fetchedOrders);
+        setLoading(false);
+      }, (err) => {
+        console.error('Error fetching orders:', err);
+        setError('تعذر جلب الطلبات');
+        setLoading(false);
+      });
+
+      return () => unsubscribe();
     }
   }, [isAdmin]);
-
-  const fetchOrders = async () => {
-    try {
-      // جلب الطلبات الأحدث أولاً
-      const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-      const snap = await getDocs(q);
-      const fetchedOrders = snap.docs.map(d => ({ id: d.id, ...d.data() } as Order));
-      setOrders(fetchedOrders);
-    } catch (err: any) {
-      console.error('Error fetching orders:', err);
-      // Fallback if index doesn't exist for orderBy
-      if (err.message.includes('index')) {
-        const fallbackQ = query(collection(db, 'orders'));
-        const snap = await getDocs(fallbackQ);
-        const fetchedOrders = snap.docs.map(d => ({ id: d.id, ...d.data() } as Order));
-        // Sort manually
-        fetchedOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-        setOrders(fetchedOrders);
-      } else {
-        setError('تعذر جلب الطلبات');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     setUpdating(orderId);
     try {
       await updateDoc(doc(db, 'orders', orderId), { status: newStatus });
-      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
     } catch (err) {
       console.error('Error updating status:', err);
       alert('فشل تحديث حالة الطلب');
